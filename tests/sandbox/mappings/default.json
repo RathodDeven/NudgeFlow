@@ -1,0 +1,13 @@
+{
+  "id": "default-partner-mapping",
+  "fields": {
+    "externalUserId": "external_user_id",
+    "phoneE164": "mobile",
+    "dropoffStage": "stage",
+    "lastStageAt": "last_stage_at",
+    "localeHint": "locale",
+    "consentFlag": "consent",
+    "partnerCaseId": "partner_case_id",
+    "deepLink": "resume_link"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "ops-alerts",
+  "nodes": [
+    {
+      "id": "webhook",
+      "name": "Ops Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 240],
+      "parameters": {
+        "path": "ops-alerts",
+        "httpMethod": "POST",
+        "responseMode": "onReceived"
+      }
+    },
+    {
+      "id": "log",
+      "name": "Log Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 240],
+      "parameters": {
+        "jsCode": "console.log('Ops alert', $json); return [{ json: { ok: true } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Ops Webhook": {
+      "main": [
+        [
+          {
+            "node": "Log Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

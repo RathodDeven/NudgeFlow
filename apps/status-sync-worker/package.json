@@ -1,0 +1,20 @@
+{
+  "name": "@apps/status-sync-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/index.ts",
+    "lint": "biome check .",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "format": "biome format --write .",
+    "format:check": "biome format ."
+  },
+  "dependencies": {
+    "@nudges/config": "workspace:*",
+    "@nudges/domain": "workspace:*",
+    "fastify": "^5.2.1"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@apps/scheduler-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/worker.ts",
+    "lint": "biome check .",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "format": "biome format --write .",
+    "format:check": "biome format ."
+  },
+  "dependencies": {
+    "@nudges/config": "workspace:*",
+    "@nudges/safety-compliance": "workspace:*",
+    "bullmq": "^5.43.6",
+    "ioredis": "^5.4.2"
+  }
+}

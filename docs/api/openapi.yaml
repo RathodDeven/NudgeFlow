@@ -1,0 +1,97 @@
+openapi: 3.1.0
+info:
+  title: NudgeFlow MVP API
+  version: 0.1.0
+servers:
+  - url: http://localhost:3000
+paths:
+  /auth/login:
+    post:
+      summary: Admin login for dashboard access token
+      responses:
+        '200':
+          description: Auth token issued
+  /auth/me:
+    get:
+      summary: Validate current admin token
+      responses:
+        '200':
+          description: Current admin user
+  /ingestion/excel:
+    post:
+      summary: Ingest canonicalized rows
+      responses:
+        '200':
+          description: Accepted counts
+  /webhooks/whatsapp/gupshup:
+    post:
+      summary: Receive inbound WhatsApp webhooks
+      responses:
+        '200':
+          description: Acknowledged
+  /status-sync/poll:
+    post:
+      summary: Trigger lender status poll
+      responses:
+        '200':
+          description: Poll response
+  /sessions/{id}/handoff:
+    post:
+      summary: Human takeover
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session paused
+  /sessions/{id}/resume:
+    post:
+      summary: Resume agent control
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session resumed
+  /metrics/funnel:
+    get:
+      summary: Funnel metrics snapshot
+      responses:
+        '200':
+          description: Metrics payload
+  /metrics/agent-performance:
+    get:
+      summary: Agent performance aggregates
+      responses:
+        '200':
+          description: Performance payload
+  /dashboard/sessions:
+    get:
+      summary: List dashboard-visible sessions
+      responses:
+        '200':
+          description: Session list
+  /dashboard/events:
+    get:
+      summary: List dashboard-visible recent events
+      responses:
+        '200':
+          description: Event list
+  /tenants/{id}/knowledge/publish:
+    post:
+      summary: Load tenant knowledge pack
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Publish result

@@ -1,0 +1,40 @@
+{
+  "name": "excel-ingestion-trigger",
+  "nodes": [
+    {
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 260],
+      "parameters": {}
+    },
+    {
+      "id": "http-ingestion",
+      "name": "Call Ingestion Worker",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [520, 260],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.INGESTION_WORKER_URL}}/ingestion/excel",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{$json}}"
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Call Ingestion Worker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
