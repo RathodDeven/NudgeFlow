@@ -18,6 +18,11 @@ WhatsApp-first loan reactivation monorepo built with TypeScript, pnpm workspaces
 - `skills/`: runtime behavior policies and specialist prompts
 - `tests/sandbox/`: sample mappings, dummy inputs, and knowledge packs
 
+## Sandbox Environment
+The `tests/sandbox/` directory provides a mock environment for end-to-end testing without requiring real Gupshup WhatsApp API credentials or live partner integration APIs. It contains:
+- **`data/sample-users.json`**: Dummy profiles profiling multiple users with different locales and loan stages, allowing for behavior testing across different simulated contexts.
+- **`knowledge/faq.md`**: Sample context/FAQ injected into agent prompts for the specialist agents during testing.
+
 ## Initialize The Repository
 If you already cloned from Git, skip to setup.
 

@@ -26,7 +26,12 @@ This repository is the monorepo root for the NudgeFlow loan-reactivation MVP.
 4. Add or update Zod contracts in `packages/domain` before cross-service behavior changes.
 5. Keep integration logic in `apps/n8n` workflows; business decisions stay in TypeScript services.
 6. Run lint/format with Biome conventions.
-7. Update `AGENTS.md` whenever architecture, module boundaries, execution workflow, or global engineering rules change.
+7. Update `.cursorrules` whenever architecture, module boundaries, execution workflow, or global engineering rules change.
+
+## Agent Architecture & User Flow (Context)
+- **User Flow**: Inbound request -> `/agent/respond` (in `apps/agent-runtime/src/index.ts`) -> Intent Classification -> Safety/Escalation check -> Skill & Prompt Assembly -> LLM Generation -> Outbound Guardrail.
+- **Context Creation**: Context is dynamically loaded via `skill-loader.ts` from the `skills/` directory (Supervisor, Specialists, Compliance Guards). Local testing knowledge is loaded from `tests/sandbox/knowledge/faq.md`.
+- **Session Management**: Handled via `packages/session-memory/src/index.ts`. Sessions are compacted by extracting `commitments` and `userObjections` when tokens exceed limits, ensuring multiple turns and user preferences are effectively profiled without blowing up the context window.
 
 ## Context Update Rule (Required)
 When adding or changing any of the following, update context in the same PR/change set:
@@ -39,7 +44,7 @@ Required updates:
 - Update `docs/architecture/overview.md` and relevant docs under `docs/api` or `docs/runbooks`.
 - Update `.env.example` for new env vars.
 - Update/extend a relevant `SKILL.md` when behavior/policy changes.
-- Update `AGENTS.md` when the architecture or global developer-agent rules change.
+- Update `.cursorrules` when the architecture or global developer-agent rules change.
 
 ## Post-Change Quality Gate (Run After Every Chat Request With Code Changes)
 1. Run Biome checks: `pnpm lint` (or `biome check .`).
