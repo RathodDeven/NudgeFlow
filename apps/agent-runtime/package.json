@@ -13,6 +13,7 @@
     "format:check": "biome format ."
   },
   "dependencies": {
+    "@fastify/cors": "^11.2.0",
     "@langchain/langgraph": "^0.2.53",
     "@nudges/config": "workspace:*",
     "@nudges/domain": "workspace:*",

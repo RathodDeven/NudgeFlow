@@ -30,3 +30,9 @@ export const chooseExperimentVariant = (stableKey: string): MessageVariant => {
 }
 
 export { stagePlaybooks }
+
+// Tenant configuration and channel formatting utilities
+export { buildDeepLink } from './config/tenant-config'
+export type { TenantConfig } from './config/tenant-config'
+export { buildWhatsAppMessage } from './formatters/whatsapp-message'
+export type { WhatsAppMessagePayload, WhatsAppUrlButton } from './formatters/whatsapp-message'

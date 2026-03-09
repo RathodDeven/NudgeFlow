@@ -4,7 +4,8 @@
 - Integration entrypoints: n8n workflows.
 - Stateful orchestration: TypeScript workers + BullMQ.
 - Reasoning: `agent-runtime` (supervisor + specialists).
-- Behavior policy source: `skills/*/SKILL.md` loaded by `agent-runtime`.
+- **Tenant loading**: on startup, `agent-runtime` reads `TENANT_ID` and loads `tenants/<id>/SOUL.md`, `knowledge-base.md`, and `config.ts`. All company-specific content is isolated in `tenants/`.
+- Behavior policy source: `skills/*/SKILL.md` (company-agnostic framework), overridden by tenant `SOUL.md`.
 - Channel adapter: `channel-whatsapp` with Gupshup package.
 - Ops UI: `ops-dashboard` is React (Vite) SPA protected by API token auth.
 - Data layer: Postgres (state) + Redis (queues/cache).
