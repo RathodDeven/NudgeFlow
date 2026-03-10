@@ -12,17 +12,34 @@ type WhatsAppButtonMessage = {
   text: string
   buttonLabel?: string
   buttonUrl?: string
+  imageUrl?: string
 }
 
 const parseWhatsAppMessage = (text: string): WhatsAppButtonMessage => {
   const buttonMatch = text.match(/🔗 (.+?): (https?:\/\/\S+)/)
+  const imageMatch = text.match(/🖼️ Image: (https?:\/\/\S+)/)
+
+  let body = text
+  let buttonLabel: string | undefined
+  let buttonUrl: string | undefined
+  let imageUrl: string | undefined
+
   if (buttonMatch) {
-    const [, buttonLabel, buttonUrl] = buttonMatch
-    const body = text.split('\n\n🔗')[0].trim()
-    return { text: body, buttonLabel, buttonUrl }
+    buttonLabel = buttonMatch[1]
+    buttonUrl = buttonMatch[2]
+    body = body.split('\n\n🔗')[0].trim()
   }
-  return { text }
+
+  if (imageMatch) {
+    imageUrl = imageMatch[1]
+    body = body.replace(/🖼️ Image: \S+/, '').trim()
+  }
+
+  return { text: body, buttonLabel, buttonUrl, imageUrl }
 }
+
+// Using the generated premium loan offer image
+const LOAN_TEMPLATE_IMAGE = 'https://raw.githubusercontent.com/NudgeFlow/assets/main/promo.png'
 
 export function SimulatorTab({ users }: SimulatorTabProps) {
   const [simMessage, setSimMessage] = useState<string>('')
@@ -33,7 +50,24 @@ export function SimulatorTab({ users }: SimulatorTabProps) {
   const [simIsLoading, setSimIsLoading] = useState<boolean>(false)
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [sendViaWhatsApp, setSendViaWhatsApp] = useState<boolean>(false)
+  const [useRealApi, setUseRealApi] = useState<boolean>(false)
   const [whatsAppStatus, setWhatsAppStatus] = useState<string>('')
+
+  const getHindiTemplate = (user: { name: string; loanAmount: number; status: string }) => {
+    const pendingStep = user.status === 'fresh_loan' ? 'Bank Statement' : 'Document'
+    return `Namaste ${user.name}! 🙏
+
+Aapka ₹${user.loanAmount.toLocaleString('en-IN')} ka business loan offer expire hone wala hai. ⏳
+
+Sirf 1 aakhri step bacha hai: Please upload your ${pendingStep}.
+
+Aapne pehle hi process start kar diya hai, ise miss mat kijiye. Ye funds aapke business growth ke liye block kiye gaye hain.
+
+Neeche diye button par click karein aur 2 minute mein process poora karein. 👇
+
+🖼️ Image: ${LOAN_TEMPLATE_IMAGE}
+🔗 Upload Documents: https://nudgeflow.io/upload`
+  }
 
   const handleUserSelect = (user: CsvUser) => {
     setSelectedUserId(user.id)
@@ -42,22 +76,31 @@ export function SimulatorTab({ users }: SimulatorTabProps) {
     setSimUserStage(user.status.toLowerCase())
   }
 
-  const sendToWhatsApp = async (body: string) => {
+  const sendToWhatsApp = async (body: string, toPhone?: string) => {
+    const targetPhone = toPhone || simMobile
     try {
-      const response = await fetch('http://localhost:3040/whatsapp/send', {
+      const endpoint = useRealApi
+        ? 'http://localhost:3000/webhooks/whatsapp/gupshup'
+        : 'http://localhost:3040/whatsapp/send'
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId: crypto.randomUUID(),
-          toPhoneE164: `91${SANDBOX_WHATSAPP_NUMBER}`,
-          body
+          toPhoneE164: `91${targetPhone}`,
+          body,
+          isRealApi: useRealApi
         })
       })
-      if (!response.ok) throw new Error(`WhatsApp send failed: ${response.status}`)
+      if (!response.ok)
+        throw new Error(`${useRealApi ? 'WhatsApp API' : 'Sandbox'} send failed: ${response.status}`)
       const data = await response.json()
-      setWhatsAppStatus(`✅ Sent via WhatsApp (${data.status ?? 'submitted'})`)
+      setWhatsAppStatus(
+        `✅ Sent via ${useRealApi ? 'WhatsApp API' : 'Sandbox'} (${data.status ?? 'submitted'})`
+      )
     } catch (err) {
-      setWhatsAppStatus(`❌ WhatsApp send failed: ${(err as Error).message}`)
+      setWhatsAppStatus(`❌ Send failed: ${(err as Error).message}`)
     }
     setTimeout(() => setWhatsAppStatus(''), 5000)
   }
@@ -110,47 +153,49 @@ export function SimulatorTab({ users }: SimulatorTabProps) {
     }
   }
 
-  const simulateProactiveNudge = async () => {
-    setSimIsLoading(true)
-    try {
-      const response = await fetch('http://localhost:3010/agent/respond', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          session: {
-            tenantId: 'sim_tenant',
-            sessionId: 'sim_session_123',
-            userProfileId: selectedUserId ?? 'sim_user',
-            contactIdentifier: simMobile,
-            summaryState: { stageContext: simUserStage, preferredLanguage: 'hinglish' },
-            compactFacts: {
-              mobile_number: simMobile,
-              user_name: simUserName
-            }
-          },
-          trigger: 'scheduled_followup'
-        })
-      })
-      if (!response.ok) throw new Error('Failed to reach agent-runtime')
-      const data = await response.json()
-      setSimHistory(prev => [...prev, { role: 'agent', text: `[Proactive Nudge]\n${data.body}` }])
-
-      if (sendViaWhatsApp) {
-        await sendToWhatsApp(data.body)
-      }
-    } catch (err: unknown) {
-      setSimHistory(prev => [...prev, { role: 'system', text: `ERROR: ${(err as Error).message}` }])
-    } finally {
-      setSimIsLoading(false)
-    }
-  }
-
   const sendDirectWhatsApp = async () => {
     if (!simMessage.trim()) return
     const text = simMessage
     setSimMessage('')
     setSimHistory(prev => [...prev, { role: 'user', text: `[Direct WhatsApp] ${text}` }])
     await sendToWhatsApp(text)
+  }
+
+  const sendTemplateMessage = async () => {
+    const user = users.find(u => u.id === selectedUserId)
+    if (!user) {
+      alert('Please select a user first')
+      return
+    }
+    const template = getHindiTemplate(user)
+    setSimHistory(prev => [...prev, { role: 'agent', text: template }])
+    if (sendViaWhatsApp) {
+      await sendToWhatsApp(template)
+    }
+  }
+
+  const sendAllTemplates = async () => {
+    if (users.length === 0) return
+    if (!confirm(`Send template message to all ${users.length} users?`)) return
+
+    setSimIsLoading(true)
+    for (const user of users) {
+      const template = getHindiTemplate(user)
+      if (user === users[0]) {
+        setSimHistory(prev => [
+          ...prev,
+          { role: 'system', text: `Sending bulk templates to ${users.length} users...` }
+        ])
+        setSimHistory(prev => [...prev, { role: 'agent', text: template }])
+      }
+
+      if (sendViaWhatsApp) {
+        await sendToWhatsApp(template, user.mobile)
+      }
+      await new Promise(r => setTimeout(r, 500))
+    }
+    setSimIsLoading(false)
+    setWhatsAppStatus(`✅ Bulk send complete for ${users.length} users`)
   }
 
   return (
@@ -206,13 +251,7 @@ export function SimulatorTab({ users }: SimulatorTabProps) {
           />
         </label>
 
-        <div
-          style={{
-            width: '1px',
-            height: '24px',
-            background: '#ccc'
-          }}
-        />
+        <div style={{ width: '1px', height: '24px', background: '#ccc' }} />
 
         <label
           style={{
@@ -233,6 +272,22 @@ export function SimulatorTab({ users }: SimulatorTabProps) {
           />
           📱 Send via WhatsApp ({SANDBOX_WHATSAPP_NUMBER})
         </label>
+
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            cursor: 'pointer',
+            background: useRealApi ? '#e0f2fe' : 'transparent',
+            padding: '4px 8px',
+            borderRadius: '6px',
+            border: useRealApi ? '1px solid #0ea5e9' : '1px solid #ccc'
+          }}
+        >
+          <input type="checkbox" checked={useRealApi} onChange={e => setUseRealApi(e.target.checked)} />🚀 Use
+          WhatsApp API
+        </label>
       </div>
 
       {whatsAppStatus && (
@@ -250,8 +305,16 @@ export function SimulatorTab({ users }: SimulatorTabProps) {
       )}
 
       <div className="row gap-sm" style={{ marginBottom: '0.75rem' }}>
-        <button type="button" className="secondary" onClick={simulateProactiveNudge} disabled={simIsLoading}>
-          🔔 Trigger Proactive Nudge
+        <button type="button" onClick={sendTemplateMessage} disabled={simIsLoading || !selectedUserId}>
+          📝 Send Hindi Template
+        </button>
+        <button
+          type="button"
+          className="secondary"
+          onClick={sendAllTemplates}
+          disabled={simIsLoading || users.length === 0}
+        >
+          📢 Send To All
         </button>
         <button
           type="button"
@@ -313,6 +376,13 @@ export function SimulatorTab({ users }: SimulatorTabProps) {
                     >
                       Neha
                     </strong>
+                    {parsed.imageUrl && (
+                      <img
+                        src={parsed.imageUrl}
+                        alt="Promo"
+                        style={{ width: '100%', borderRadius: '4px', marginBottom: '8px', display: 'block' }}
+                      />
+                    )}
                     <span style={{ whiteSpace: 'pre-wrap', color: '#111' }}>{parsed.text}</span>
                   </div>
                   {parsed.buttonLabel && parsed.buttonUrl ? (

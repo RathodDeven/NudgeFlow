@@ -1,17 +1,7 @@
 version: "3.9"
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: nudgeflow-postgres
-    environment:
-      POSTGRES_DB: nudgeflow
-      POSTGRES_USER: nudgeflow
-      POSTGRES_PASSWORD: nudgeflow
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+  # redis and n8n are kept for future reference but not used in the current MVP phase.
+  # To run them, uncomment the services below and use 'docker compose up'.
 
   redis:
     image: redis:7-alpine
@@ -39,12 +29,12 @@ services:
       DB_POSTGRESDB_DATABASE: nudgeflow
       DB_POSTGRESDB_USER: nudgeflow
       DB_POSTGRESDB_PASSWORD: nudgeflow
-    depends_on:
-      - postgres
+    # depends_on:
+    #   - postgres
     volumes:
       - n8n_data:/home/node/.n8n
 
 volumes:
-  postgres_data:
+  # postgres_data:
   redis_data:
   n8n_data:

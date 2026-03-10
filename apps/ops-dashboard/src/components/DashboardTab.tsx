@@ -1,5 +1,5 @@
 import { type ReactNode, useState } from 'react'
-import type { EventItem, FunnelMetrics, PendingHITLTask, SessionItem } from '../types'
+import type { CsvUser, EventItem, FunnelMetrics, PendingHITLTask, SessionItem } from '../types'
 
 const priorityStyles: Record<string, { bg: string; color: string; label: string }> = {
   P1: { bg: '#fee2e2', color: '#dc2626', label: '🔴 P1 — Call Now' },
@@ -16,6 +16,7 @@ interface DashboardTabProps {
   onReject: (id: string) => void
   onMarkCalled: (id: string) => void
   fakeOverrideStatus: (userId: string, newStatus: string) => void
+  csvUsers: CsvUser[]
   csvUploadSlot?: ReactNode
 }
 
@@ -28,6 +29,7 @@ export function DashboardTab({
   onReject,
   onMarkCalled,
   fakeOverrideStatus,
+  csvUsers,
   csvUploadSlot
 }: DashboardTabProps) {
   const callQueue = pendingTasks.filter(t => t.callPriority && t.callPriority !== 'none')
@@ -260,6 +262,38 @@ export function DashboardTab({
               </div>
             ))}
         </article>
+      </section>
+
+      <section className="card" style={{ marginTop: '2rem' }}>
+        <h2>👥 All Ingested Users ({csvUsers.length})</h2>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid #eee' }}>
+                <th style={{ padding: '8px' }}>Name</th>
+                <th style={{ padding: '8px' }}>Customer ID</th>
+                <th style={{ padding: '8px' }}>Mobile</th>
+                <th style={{ padding: '8px' }}>Status</th>
+                <th style={{ padding: '8px' }}>Loan Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {csvUsers.map(user => (
+                <tr key={user.id} style={{ borderBottom: '1px solid #eee' }}>
+                  <td style={{ padding: '8px' }}>{user.name}</td>
+                  <td style={{ padding: '8px' }}>
+                    <code>{user.customerId}</code>
+                  </td>
+                  <td style={{ padding: '8px' }}>{user.mobile}</td>
+                  <td style={{ padding: '8px' }}>
+                    <span className="badge info">{user.status}</span>
+                  </td>
+                  <td style={{ padding: '8px' }}>₹{user.loanAmount.toLocaleString('en-IN')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
     </>
   )

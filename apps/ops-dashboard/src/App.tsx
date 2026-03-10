@@ -140,7 +140,15 @@ export function App() {
         <section className="row">
           <div>
             <h1>NudgeFlow Ops</h1>
-            <p className="muted">Protected dashboard. Admin auth required.</p>
+            <div className="row gap-xs" style={{ alignItems: 'center' }}>
+              <p className="muted">Protected dashboard. Admin auth required.</p>
+              <span
+                className={`badge ${process.env.NODE_ENV === 'production' ? 'off' : 'on'}`}
+                style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}
+              >
+                {process.env.NODE_ENV === 'production' ? '● Production' : '● Sandbox'}
+              </span>
+            </div>
           </div>
           <div className="row gap-sm">
             <button
@@ -196,6 +204,7 @@ export function App() {
                 />
               ) : null
             }
+            csvUsers={csvUsers}
           />
         ) : (
           <SimulatorTab users={csvUsers} />

@@ -38,9 +38,21 @@ skills/                        ← Company-agnostic agent framework skills
 
 apps/                          ← Deployable services
 packages/                      ← Shared, company-agnostic modules
-infra/                         ← Docker and AWS bootstrap
+infra/                         ← AWS bootstrap (Local Docker removed)
 docs/                          ← Architecture, API, runbooks
 ```
+
+## Database Management & Migrations
+
+We use **Neon DB** for both sandbox and production. 
+
+1. **Source of Truth**: The master schema is [`packages/db/schema/schema.sql`](./packages/db/schema/schema.sql).
+2. **Migrations**: All schema changes must be recorded as a new `.sql` file in [`packages/db/migrations/`](./packages/db/migrations/).
+3. **Migration Rule**: When a coding agent changes the database structure:
+   - Create a new migration file (e.g., `002_add_indexing.sql`) with incremented numbering.
+   - Update the master `schema.sql` to include the new changes.
+   - **Notify the user** to run the new migration file in the Neon SQL Editor.
+   - **Ask the user** to confirm they have updated the Neon DB before proceeding with code that depends on the new schema.
 
 ## How Tenant Loading Works
 
@@ -73,6 +85,7 @@ To **add a new company**, create `tenants/<id>/` with the three required markdow
 8. **Strict File Size & Modularity Rule**: Files should NEVER exceed ~200 lines. Extract reusable code aggressively:
    - React: `components/`, `hooks/`, `types/`, `api/`
    - Backend: `routes/`, `controllers/`, `services/`, `utils/`
+9. **Database Changes**: Always follow the migration rule in the "Database Management & Migrations" section above.
 
 ## Agent Architecture & User Flow
 - **User Flow**: Inbound request → `/agent/respond` → Intent Classification → Safety/Escalation check → Skill & Prompt Assembly (with tenant SOUL + knowledge) → LLM Generation → Outbound Guardrail.

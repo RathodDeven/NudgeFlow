@@ -101,7 +101,7 @@ The file is injected verbatim into the LLM system prompt for every session. Keep
 ```bash
 cp .env.example .env        # Configure required variables (see below)
 pnpm install
-pnpm db:compose:up          # Start local Postgres + Redis via Docker
+# pnpm db:compose:up        # Local Postgres removed. Use Neon DB instead.
 ```
 
 ### Sandbox Mode (For Testing Without Real APIs)
@@ -140,6 +140,11 @@ pnpm dev --filter=@apps/ingestion-worker
 > **Live data:** Place CSV files in `tenants/clickpe/data/dropoffs.csv`, then POST to `/ingestion/excel`.  
 > **Live knowledge:** Edit `tenants/clickpe/knowledge-base.md`.
 
+### Database Schema & Migrations
+- **Master Schema**: [`packages/db/schema/schema.sql`](packages/db/schema/schema.sql)
+- **Migrations**: [`packages/db/migrations/`](packages/db/migrations/)
+- **Target**: Neon DB (Postgres)
+
 ---
 
 ## Environment Variables
@@ -152,8 +157,7 @@ These are the only vars you need to run and test locally:
 | `NODE_ENV` | `development` | |
 | `PORT` | `3000` | API gateway port |
 | `TZ` | `Asia/Kolkata` | Timezone for outreach window checks |
-| `DATABASE_URL` | `postgres://nudgeflow:nudgeflow@localhost:5432/nudgeflow` | Local Docker Postgres |
-| `REDIS_URL` | `redis://localhost:6379` | Local Docker Redis |
+| `DATABASE_URL` | `postgres://user:pass@host/db?sslmode=require` | Neon DB (Sandbox/Dev) |
 | `TENANT_ID` | `clickpe` | Loads `tenants/clickpe/` by default |
 | `AGENT_SKILLS_DIR` | `skills` | Path to agent skill files |
 | `ADMIN_USERNAME` | `admin` | Ops dashboard login |
@@ -179,8 +183,6 @@ Only needed when connecting to live APIs:
 | `N8N_HOST` | n8n | Default `localhost` |
 | `N8N_PORT` | n8n | Default `5678` |
 
----
-
 ## Local Service Ports
 | Service | Port |
 |---|---|
@@ -190,7 +192,6 @@ Only needed when connecting to live APIs:
 | `status-sync-worker` | `3030` |
 | `channel-whatsapp` | `3040` |
 | `ops-dashboard` | `3050` |
-| `n8n` | `5678` |
 
 ---
 
