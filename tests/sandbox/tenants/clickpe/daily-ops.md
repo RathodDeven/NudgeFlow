@@ -3,16 +3,21 @@ name: daily-ops
 description: Daily execution loop, tracker fields, blocker codes, and pilot metrics for ClickPe Fresh Loan pilot.
 ---
 
-## Daily Execution Loop
+## 3-Tiered Recovery Strategy
+- **Tier 1 (Progress Nudge):** Sent within 15-30 mins of abandonment. High urgency, low friction.
+- **Tier 2 (Operational Rescue):** Sent 24 hours later. Diagnoses blockers like `bill_mismatch`.
+- **Tier 3 (Value Nudge):** Sent Sunday evening (6 PM - 9 PM) for weekly planning.
+
+## Daily Execution Loop (The "Golden Windows")
+*Research shows business owners respond best during specific mid-week and evening windows. Do not blast messages randomly.*
 
 | Time Block | Action | Output |
 |---|---|---|
-| **Morning** | Import new status sheet, compare with yesterday | Movement status per user |
-| **Morning** | Bucket unchanged users by stage | Stage-grouped lists |
-| **Late Morning** | Send stage-specific WhatsApp message to each bucket | First touch of the day |
-| **Afternoon** | Read WhatsApp replies, tag blockers | Blocker codes assigned |
-| **Evening** | Execute call rescue queue (P1 → P2 → P3) | Recovery attempts |
-| **End of Day** | Update tracker, note learnings | Updated tracker |
+| **Morning Prep** | Import new status sheet, compare with yesterday | Movement status per user |
+| **10:00 AM - 11:30 AM** | Execute **Tier 2** follow-ups for users stuck > 24h | High engagement window (pre-lunch) |
+| **2:00 PM - 4:00 PM** | Execute **P2 / P3 Call Escapations** | Post-lunch planning window |
+| **7:00 PM - 9:00 PM** | Execute **Tier 1** nudges for same-day dropoffs | Evening peak (shop closing) |
+| **Sunday 6:00 PM - 9:00 PM**| Execute **Tier 3** value nudges for all stuck users | Pre-week mental prep window |
 
 ## User Tags
 

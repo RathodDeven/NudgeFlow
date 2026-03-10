@@ -11,17 +11,20 @@
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "format": "biome format --write .",
-    "db:compose:up": "docker compose -f infra/docker/docker-compose.yml up -d",
-    "db:compose:down": "docker compose -f infra/docker/docker-compose.yml down",
+    "db:compose:up": "sudo docker compose -f infra/docker/docker-compose.yml up -d",
+    "db:compose:down": "sudo docker compose -f infra/docker/docker-compose.yml down",
     "format:check": "biome format .",
     "lint:fix": "biome check --write ."
   },
   "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
     "@types/node": "^22.13.10",
-    "turbo": "^2.4.4",
     "tsx": "^4.19.3",
+    "turbo": "^2.4.4",
     "typescript": "^5.8.2",
-    "vitest": "^3.0.8",
-    "@biomejs/biome": "^1.9.4"
+    "vitest": "^3.0.8"
+  },
+  "dependencies": {
+    "dotenv": "^17.3.1"
   }
 }

@@ -28,6 +28,8 @@ const envSchema = z.object({
 
 export type AppEnv = z.infer<typeof envSchema>
 
+import * as dotenv from "dotenv";
+dotenv.config({ path: "../../.env" });
 export const loadEnv = (source: NodeJS.ProcessEnv = process.env): AppEnv => envSchema.parse(source)
 
 export const isWithinContactWindow = (

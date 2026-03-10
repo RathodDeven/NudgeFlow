@@ -1,13 +1,35 @@
 ---
 name: channel-rules
-description: WhatsApp channel configuration for ClickPe sandbox — CTA layout, deep link template, reply buttons, and messaging constraints.
+description: WhatsApp channel configuration for ClickPe — CTA layout, deep link template, reply buttons, and messaging constraints.
+---
+
+## Approved WhatsApp Templates
+
+The system must use these exact pre-approved Meta templates when initiating contact outside the 24-hour customer service window.
+
+### Template: Initial Outreach (Fresh Loan)
+- **Template Name:** `clickpe_fresh_loan_nudge`
+- **Category:** Utility
+- **Language:** English
+- **Body Text:** "Hi {{1}} 🌟\n\nMain {{2}} bol rahi hoon {{3}} se! Aapka Rs. {{4}} ka loan offer completely approved hai 🎉\n\nBas ek aakhri choti si step baaki hai: Please verify your {{5}} so we can process your disbursal quickly 💸\n\nNiche diye gaye link par click karein aur apna application 2 minute mein poora karein 👇"
+- **Variable Mapping:**
+  - `{{1}}`: Applicant's First Name
+  - `{{2}}`: Agent Name (e.g. "Neha")
+  - `{{3}}`: Company Name (e.g. "ClickPe")
+  - `{{4}}`: Loan Amount
+  - `{{5}}`: Exact pending documents or steps (e.g. "Udyam and Electricity Bill")
+- **Buttons (Strict Order):**
+  1. URL Button: `Claim Reserved Funds 🚀` (URL suffix variable: `{{6}}` = `<mobile_number>&utm_source=muthoot_follow_up...`)
+  2. Quick Reply: `Bill mismatch`
+  3. Quick Reply: `Call me`
+
 ---
 
 ## Deep Link Configuration
 When the nudge strategy involves sending the user back into the flow, use a URL button.
 To construct the Deep Link for the user, use the following template, replacing `{{MOB_NUM}}` with the exact mobile number from the user's facts:
 
-`https://los-prod.dailype.in/muthoot/session-link?mob_num={{MOB_NUM}}&utm_source=muthoot_follow_up&utm_medium=whatsapp&utm_campaign=nudge_sandbox`
+`https://los-prod.dailype.in/muthoot/session-link?mob_num={{MOB_NUM}}&utm_source=muthoot_follow_up&utm_medium=whatsapp&utm_campaign=clickpe_nudge`
 
 ## WhatsApp CTA Button
 If you decide to include a URL button in the WhatsApp message payload, ALWAYS use the exact label:

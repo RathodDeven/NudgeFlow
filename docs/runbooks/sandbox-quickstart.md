@@ -6,10 +6,10 @@ Test the full NudgeFlow agent stack locally — agent responses, dashboard, What
 
 ```bash
 # Start PostgreSQL, Redis, and n8n
-docker compose -f infra/docker/docker-compose.yml up -d
+pnpm db:compose:up
 
 # Verify DB is ready (should show 12 tables)
-docker exec nudgeflow-postgres psql -U nudgeflow -c '\dt'
+sudo docker exec nudgeflow-postgres psql -U nudgeflow -c '\dt'
 ```
 
 ## 2. Configure Environment
@@ -106,4 +106,4 @@ Click **▶ Show Call Script** to see what to say on the call.
 | `agent-runtime` returns errors | Check `OPENAI_API_KEY` in `.env` |
 | WhatsApp send fails | Check `GUPSHUP_API_KEY` + `GUPSHUP_APP_NAME` in `.env` |
 | CSV upload 401 | Login again — session may have expired |
-| DB connection refused | Run `docker compose -f infra/docker/docker-compose.yml up -d` |
+| DB connection refused | Run `pnpm db:compose:up` |

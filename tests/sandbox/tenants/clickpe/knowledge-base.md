@@ -5,8 +5,13 @@ Guide the AI agent (Neha) to re-engage drop-off users and move them through the 
 
 ---
 
-## 1. Loan Journey Overview & Pipeline
-The loan process follows these sequential stages:
+## 1. Target Audience Context
+- **Demographic Centers:** Surat, Gujarat (395010) textiles/fabrics, and Indore/Ujjain, MP retail/kirana stores.
+- **Typical Loan Size:** ₹75,000 to ₹100,000.
+- **Goal:** For these MSME owners, minimize cognitive overload. Do not ask for everything at once.
+
+## 2. Loan Journey Overview & Pipeline
+The loan process follows these sequential stages (Focus purely on moving them one step forward):
 `Login / OTP` → `PAN` → `Personal Details` → `Email OTP` → `Udyam` → `Business Details` → `Offer` → `Accept Offer` → `Fresh Loan` → `Document Upload` → `Loan Detail Submitted` → `DigiLocker / KYC / Selfie / Shop Photo` → `Under Review` → `VKYC / VPD` → `Credit Decisioning` → `Approval` → `Disbursal`
 
 ---
@@ -64,22 +69,22 @@ Once verification is done, status → `Under Review`. The user must complete:
 ## 6. Stage-by-Stage WhatsApp Messaging (Post-Offer)
 
 ### Stage A — Fresh Loan
+**Psychological Hook:** Loss Aversion / Endowment Effect. Remind them their funds are blocked and might expire.
+
 **Primary Message:**
 ```
-Hi {{name}}, your ClickPe loan application has moved past offer acceptance.
-
-Next step: upload
-1. Udyam card
-2. electricity bill
-
-If the electricity bill is not in your name, reply "bill mismatch" and we will guide the alternate documents.
+Namaste {{1}}! 🙏
+Aapka ₹{{4}} ka business loan offer expire hone wala hai. ⏳
+Sirf 1 aakhri step bacha hai: Please upload your Udyam card and electricity bill.
+Aapne pehle hi process start kar diya hai, ise miss mat kijiye. Ye funds aapke business growth ke liye block kiye gaye hain.
+Agar electricity bill mein naam alag hai, toh reply karein "bill mismatch".
+Neeche diye button par click karein aur 2 minute mein process poora karein. 👇
 ```
 **Reply Buttons:** `Upload now` | `Bill mismatch` | `Call me`
 
-**Follow-up:**
+**Follow-up (24 hours later):**
 ```
-Hi {{name}}, to move your loan ahead today, please upload the Udyam card and electricity bill.
-If the bill is not in your name, reply "bill mismatch".
+Hi {{name}}, just a reminder! Aapka ₹{{loan_amount}} reserve rakha hua hai. To secure this growth fund today, please upload the Udyam card and electricity bill. Miss mat kijiye!
 ```
 
 ### Stage B — Loan Detail Submitted
@@ -109,15 +114,17 @@ Reply "call" if you want us to explain the next step.
 
 ---
 
-## 7. Blocker Resolution Map
+## 7. Blocker Resolution Map & Conversational Flows
 
-| Blocker Code | Meaning | Resolution | Escalate to Call? |
+| Blocker Code | Meaning | AI Agent Response Flow | Escalate to Call? |
 |---|---|---|---|
-| `bill_mismatch` | Electricity bill not in applicant name | Guide: upload relationship proof + father's Aadhaar | Yes, if confused |
-| `confused` | User doesn't understand next step | Explain exact pending step simply | Yes, if persists |
-| `technical_issue` | OTP, DigiLocker, selfie upload, app error | Troubleshoot specific issue | Yes, same day |
-| `busy` | User says they'll do it later | Ask for specific time commitment | Call at promised time |
-| `completed` | User claims done but status unchanged | Verify against sheet; re-explain | No |
+| `bill_mismatch` | Electricity bill not in applicant name | **Immediate Diagnosis:** "Samajh gaye! Agar Bijli ka bill aapke naam par nahi hai, to tension mat lijiye. 🛡️"<br>**Solution:** "Aap apne Father ka Aadhaar aur unke saath apna 'Relationship Proof' upload kar sakte hain."<br>**Action:** "Kya aap ye abhi upload karna chahenge?" | Yes, if stuck |
+| `confused` | User doesn't understand next step | Explain exact pending step simply using breadcrumbing | Yes, if persists |
+| `technical_issue` | OTP, DigiLocker, app error | Troubleshoot specific issue | Yes, same day |
+| `busy` | User says they'll do it later | Ask for a specific time commitment to follow up | Call at promised time |
+| `completed` | User claims done but status unchanged | Verify against tracker; re-explain remaining sub-steps | No |
+
+*Note: In the future, Document Collection (Udyam, Bill) will use 'WhatsApp Flows' to keep the user directly in the chat layout for +60% completion rate.*
 
 ---
 
