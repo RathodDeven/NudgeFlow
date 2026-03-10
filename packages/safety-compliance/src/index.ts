@@ -9,8 +9,6 @@ export type GuardrailResult = {
 
 const piiPatterns = [/\b\d{12}\b/g, /\b\d{16}\b/g, /\b\d{6}\b/g, /\b[A-Z]{5}[0-9]{4}[A-Z]\b/gi]
 
-const offScopePatterns = [/(politics|religion|investment tips|stock tip|crypto|joke|poem)/i]
-
 export const redactPii = (text: string): string => {
   let redacted = text
   for (const pattern of piiPatterns) {
@@ -18,8 +16,6 @@ export const redactPii = (text: string): string => {
   }
   return redacted
 }
-
-export const isOutOfScope = (text: string): boolean => offScopePatterns.some(pattern => pattern.test(text))
 
 export const enforceMessagingPolicy = (params: {
   now: Date
@@ -45,21 +41,5 @@ export const enforceMessagingPolicy = (params: {
 }
 
 export const guardOutboundMessage = (message: string): GuardrailResult => {
-  const sanitized = redactPii(message)
-  if (isOutOfScope(message)) {
-    return {
-      allowed: false,
-      reasons: ['out_of_scope_request'],
-      sanitizedMessage: 'I can only help with your loan application journey and required steps.'
-    }
-  }
-  return { allowed: true, reasons: [], sanitizedMessage: sanitized }
-}
-
-export const shouldEscalateToHuman = (session: ConversationSession, lastInboundText?: string): boolean => {
-  if (!lastInboundText) return false
-  const highRisk = /(legal|complaint|fraud|abuse|harassment|ombudsman)/i.test(lastInboundText)
-  const confused = /(not understanding|confused|unclear|agent wrong)/i.test(lastInboundText)
-  const repeatedObjection = session.summaryState.userObjections.length >= 3
-  return highRisk || (confused && repeatedObjection)
+  return { allowed: true, reasons: [], sanitizedMessage: redactPii(message) }
 }

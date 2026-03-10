@@ -8,8 +8,10 @@ This repository is the monorepo root for the NudgeFlow loan-reactivation MVP.
 tenants/                       ← One folder per company deployment
   <tenant-id>/
     SOUL.md                    ← Agent persona, tone, identity, boundaries
-    config.ts                  ← Deep link template, UTM params, CTA label
+    channel-rules.md           ← WhatsApp CTA layout, sizing limits, and deep link template
     knowledge-base.md          ← Business knowledge (loan journey, FAQs, rules)
+    call-playbook.md           ← (optional) Manual call scripts, priority matrix, trigger conditions
+    daily-ops.md               ← (optional) Daily execution loop, tracker fields, blocker codes
     data/
       dropoffs.csv             ← User drop-off CSV for ingestion
 
@@ -17,7 +19,7 @@ tests/sandbox/
   tenants/
     <tenant-id>/               ← Mirrors live tenants/, used for sandbox runs
       SOUL.md
-      config.ts                ← Same structure, utmCampaign = 'nudge_sandbox'
+      channel-rules.md         ← Same structure, utmCampaign = 'nudge_sandbox'
       knowledge-base.md
       data/dropoffs.csv
   mappings/                    ← Field mapping profiles for CSV normalization
@@ -29,6 +31,10 @@ skills/                        ← Company-agnostic agent framework skills
   compliance-guard/SKILL.md
   tooling-policy/SKILL.md
   persona-agent/SKILL.md       ← Generic fallback; overridden by tenant SOUL.md
+  persuasion-policy/SKILL.md
+  stage-router/SKILL.md        ← Route actions by loan stage + detected blocker
+  call-escalation/SKILL.md     ← Decide when manual call needed (P1/P2/P3 priority)
+  daily-ops-loop/SKILL.md      ← Guide daily batch processing workflow
 
 apps/                          ← Deployable services
 packages/                      ← Shared, company-agnostic modules
@@ -38,12 +44,14 @@ docs/                          ← Architecture, API, runbooks
 
 ## How Tenant Loading Works
 
-At startup, `apps/agent-runtime` reads the `TENANT_ID` environment variable (default: `muthoot`) and loads:
+At startup, `apps/agent-runtime` reads the `TENANT_ID` environment variable (default: `clickpe`) and loads:
 - `tenants/${TENANT_ID}/SOUL.md` → injected as the LLM system prompt persona block
 - `tenants/${TENANT_ID}/knowledge-base.md` → injected as knowledge context for every session
-- `tenants/${TENANT_ID}/config.ts` → configures deep link template, UTM params, and CTA button label
+- `tenants/${TENANT_ID}/channel-rules.md` → configures the expected WhatsApp payload structure and deep link template
+- `tenants/${TENANT_ID}/call-playbook.md` → (optional) manual call scripts and priority rules, injected when present
+- `tenants/${TENANT_ID}/daily-ops.md` → (optional) daily execution loop and tracker config, injected when present
 
-To **add a new company**, create `tenants/<id>/` with those three files and set `TENANT_ID=<id>` in `.env`. No code changes are required.
+To **add a new company**, create `tenants/<id>/` with the three required markdown files (and optionally `call-playbook.md` and `daily-ops.md`) and set `TENANT_ID=<id>` in `.env`. No code changes are required.
 
 ## Product Constraints (Do Not Violate)
 1. WhatsApp-first MVP; voice is interface-ready only.
@@ -68,15 +76,15 @@ To **add a new company**, create `tenants/<id>/` with those three files and set 
 
 ## Agent Architecture & User Flow
 - **User Flow**: Inbound request → `/agent/respond` → Intent Classification → Safety/Escalation check → Skill & Prompt Assembly (with tenant SOUL + knowledge) → LLM Generation → Outbound Guardrail.
-- **Prompt Assembly**: Tenant `SOUL.md` is the persona; framework skills (supervisor, specialist, compliance) provide structural behavior; `knowledge-base.md` provides business context.
+- **Prompt Assembly**: Tenant `SOUL.md` is the persona; framework skills (supervisor, specialist, compliance) provide structural behavior; `knowledge-base.md` and `channel-rules.md` provide business context and output format constraints.
 - **Session Management**: `packages/session-memory/src/index.ts`. Sessions are compacted when tokens exceed limits, extracting `commitments` and `userObjections` to profile users across turns.
-- **Deep Link**: `buildDeepLink(mobileNumber, tenantConfig)` generates a user-specific trackable URL. `buildWhatsAppMessage()` wraps the LLM output into a structured payload with a CTA button.
+- **Payload**: The LLM natively dictates the final deeply-linked URL and CTA string as part of its strictly formulated `whatsappPayload` JSON response block.
 
 ## Context Update Rule (Required)
 When adding or changing any of the following, update context in the same PR/change set:
 1. New service, package, queue, public endpoint, schema, env var, or external provider.
 2. Any agent policy/behavior update (route rules, persuasion policy, compliance policy).
-3. Any tenant addition (`tenants/<id>/`) or tenant config change.
+3. Any tenant addition (`tenants/<id>/`) or tenant markdown configuration change.
 4. Any architectural change (service topology, ownership boundaries, auth model, deployment flow).
 
 Required updates:
@@ -98,3 +106,6 @@ Required updates:
 - Supervisor chooses specialist skill context.
 - Compliance guard skill applies to all outbound responses.
 - Tool policy skill defines allowed tool usage and escalation boundaries.
+- Stage router skill determines next action based on user stage and blocker.
+- Call escalation skill evaluates whether a manual call is needed (P1/P2/P3).
+- Daily ops loop skill guides batch processing workflows.

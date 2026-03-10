@@ -28,3 +28,5 @@
 3. Add new lender formats via mapping profiles in `tests/sandbox/mappings` and ingestion profile registry.
 4. Split services into independent repos later by moving apps/packages with unchanged interfaces.
 5. Add or refine agent behavior by updating `skills/*/SKILL.md` without changing runtime code paths.
+6. Add manual call escalation by providing `call-playbook.md` in a tenant folder (no code changes needed).
+7. Add daily batch operations by providing `daily-ops.md` in a tenant folder (no code changes needed).

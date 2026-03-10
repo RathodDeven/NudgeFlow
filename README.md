@@ -13,16 +13,16 @@ WhatsApp-first proactive loan reactivation agent — multi-tenant, modular, buil
 
 ```
 tenants/                    ← One folder per company (all company-specific data)
-  muthoot/
+  clickpe/
     SOUL.md                 ← Agent identity: name, persona, tone, language rules
-    config.ts               ← Deep link template, UTM tracking, CTA button label
+    channel-rules.md        ← WhatsApp CTA layout, sizing limits, and deep link template
     knowledge-base.md       ← Business knowledge injected into every LLM session
     data/dropoffs.csv       ← Drop-off user data for ingestion
 
 tests/sandbox/
   tenants/
-    muthoot/                ← Sandbox mirror of live (utmCampaign = 'nudge_sandbox')
-      SOUL.md / config.ts / knowledge-base.md / data/dropoffs.csv
+    clickpe/                ← Sandbox mirror of live (utmCampaign = 'nudge_sandbox')
+      SOUL.md / channel-rules.md / knowledge-base.md / data/dropoffs.csv
   mappings/                 ← CSV field-mapping profiles
 
 skills/                     ← Company-agnostic agent framework
@@ -47,7 +47,7 @@ All company-specific content lives in `tenants/<tenant-id>/`. The runtime select
 | File | Purpose |
 |---|---|
 | `SOUL.md` | Agent persona, tone, language rules, goals, and boundaries for this company's users |
-| `config.ts` | Deep link URL template, UTM params, CTA button label |
+| `channel-rules.md` | WhatsApp message constraints, CTA button rules, and deep link formula |
 | `knowledge-base.md` | Business knowledge (stages, documents, rules) injected verbatim into every LLM session |
 | `data/dropoffs.csv` | CSV file of users who dropped off — ingested via `ingestion-worker` |
 
@@ -73,21 +73,19 @@ You are Priya...
 - Only discuss loan applications, status, and required documents.
 ```
 
-**`tenants/acme/config.ts`** — Campaign config:
-```typescript
-const config = {
-  deepLinkTemplate: 'https://your-app.com/resume?mob={{MOB_NUM}}&utm_source={{UTM_SOURCE}}&...',
-  utmSource: 'acme_follow_up',
-  utmMedium: 'whatsapp',
-  utmCampaign: 'nudge_agent',
-  ctaButtonLabel: 'Resume Application 🚀'
-}
-export default config
+**`tenants/acme/channel-rules.md`** — Channel limits & link building:
+```markdown
+## Deep Link Configuration
+Use the following template, replacing `{{MOB_NUM}}` with the exact mobile number from the user's facts:
+`https://your-app.com/resume?mob={{MOB_NUM}}&utm_source=acme_follow_up&utm_medium=whatsapp&utm_campaign=nudge_agent`
+
+## WhatsApp CTA Button
+ALWAYS use the exact label: `Resume Application 🚀`
 ```
 
 **`tenants/acme/knowledge-base.md`** — Business knowledge (stages, document rules, FAQs).
 
-Then set `TENANT_ID=acme` in `.env`. **No code changes needed.**
+Then set `TENANT_ID=acme` in `.env`. **No code changes or configs to compile.**
 
 ### Structuring `knowledge-base.md`
 The file is injected verbatim into the LLM system prompt for every session. Keep it concise and authoritative:
@@ -111,7 +109,7 @@ The sandbox lets you test agent responses and the Ops Dashboard without connecti
 
 ```bash
 # 1. Set TENANT_ID to use the sandbox tenant data
-TENANT_ID=muthoot            # loads from tests/sandbox/tenants/muthoot/
+TENANT_ID=clickpe            # loads from tenants/clickpe/
 
 # 2. Start the agent runtime only
 pnpm dev --filter=@apps/agent-runtime
@@ -125,8 +123,8 @@ Open the **Ops Dashboard → Simulator tab** at `http://localhost:3050`. You can
 - Trigger proactive nudges to see the WhatsApp-formatted message with CTA button
 - Change the user's loan stage and mobile number to test different scenarios
 
-> **Sandbox data:** Edit `tests/sandbox/tenants/muthoot/data/dropoffs.csv` to add test users.  
-> **Sandbox knowledge:** Edit `tests/sandbox/tenants/muthoot/knowledge-base.md` to update test context.
+> **Sandbox data:** Edit `tests/sandbox/tenants/clickpe/data/dropoffs.csv` to add test users.  
+> **Sandbox knowledge:** Edit `tests/sandbox/tenants/clickpe/knowledge-base.md` to update test context.
 
 ### Live Mode (Production / Staging)
 ```bash
@@ -139,8 +137,8 @@ pnpm dev --filter=@apps/agent-runtime
 pnpm dev --filter=@apps/ingestion-worker
 ```
 
-> **Live data:** Place CSV files in `tenants/muthoot/data/dropoffs.csv`, then POST to `/ingestion/excel`.  
-> **Live knowledge:** Edit `tenants/muthoot/knowledge-base.md`.
+> **Live data:** Place CSV files in `tenants/clickpe/data/dropoffs.csv`, then POST to `/ingestion/excel`.  
+> **Live knowledge:** Edit `tenants/clickpe/knowledge-base.md`.
 
 ---
 
@@ -156,7 +154,7 @@ These are the only vars you need to run and test locally:
 | `TZ` | `Asia/Kolkata` | Timezone for outreach window checks |
 | `DATABASE_URL` | `postgres://nudgeflow:nudgeflow@localhost:5432/nudgeflow` | Local Docker Postgres |
 | `REDIS_URL` | `redis://localhost:6379` | Local Docker Redis |
-| `TENANT_ID` | `muthoot` | Loads `tenants/muthoot/` by default |
+| `TENANT_ID` | `clickpe` | Loads `tenants/clickpe/` by default |
 | `AGENT_SKILLS_DIR` | `skills` | Path to agent skill files |
 | `ADMIN_USERNAME` | `admin` | Ops dashboard login |
 | `ADMIN_PASSWORD` | `change_me` | Ops dashboard login |
@@ -210,3 +208,29 @@ pnpm format:check  # Format check
 - Messages are informational only — no fabricated incentives or aggressive pressure.
 - Stop outreach on blocked, opt-out, non-responsive, or human takeover.
 - Ops Dashboard endpoints require admin auth.
+
+---
+
+## TODO / Future Roadmap
+
+### n8n Automation (Not Used Yet)
+
+n8n is self-hosted via Docker (`infra/docker/docker-compose.yml`, port 5678) and 3 skeleton workflow JSONs exist in `apps/n8n/workflows/`, but **nothing in the codebase actually connects to or depends on n8n right now**.
+
+**Why it's not needed yet:** The current operating model is fully **Human-in-the-Loop (HITL)** — every action (send message, trigger nudge, update stage, call a user) is initiated manually by the admin from the Ops Dashboard. There is no automated outreach, no scheduled batch runs, and no unattended message sending. In this mode, n8n adds complexity without value.
+
+**When n8n becomes valuable:** Once the pilot proves the agent works correctly and the team is comfortable removing the human approval step, n8n can automate:
+
+| Workflow | Trigger | What it does |
+|---|---|---|
+| **Daily batch nudge** | Cron (9 AM IST) | Loop through all `FRESH_LOAN` users, call `agent-runtime` for each, send WhatsApp via `channel-whatsapp` |
+| **Scheduled follow-ups** | Timer per user | Auto-retry users who didn't respond within 24h |
+| **WhatsApp webhook relay** | Gupshup webhook | Receive inbound WhatsApp → forward to `agent-runtime` → auto-reply |
+| **Ops alerts** | Event-driven | Slack/email notification when a P1 call escalation is created |
+| **CSV ingestion** | File upload trigger | Watch a folder/S3 bucket for new CSVs → auto-import to DB |
+
+**Action items when ready:**
+1. Import the existing skeleton workflows into n8n UI (`http://localhost:5678`)
+2. Build the daily batch workflow using the template pattern (Schedule Trigger → HTTP Request → agent-runtime)
+3. Add a WhatsApp Trigger node pointing to `channel-whatsapp` webhook
+4. Gradually remove HITL approval gates as confidence grows

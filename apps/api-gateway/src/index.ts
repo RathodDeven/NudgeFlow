@@ -1,4 +1,5 @@
 import { loadEnv } from '@nudges/config'
+import { ensureTenant, getPool, getUserById, insertUsers, listUsers, updateUserStage } from '@nudges/db'
 import { handoffRequestSchema, ingestExcelRequestSchema, metricsResponseSchema } from '@nudges/domain'
 import { loadKnowledgeSet } from '@nudges/knowledge-runtime'
 import { deriveFunnelMetrics } from '@nudges/observability'
@@ -9,6 +10,20 @@ import { eventLogger, sessionState } from './state'
 const env = loadEnv()
 const app = Fastify({ logger: true })
 const protectedHandler = requireAdminAuth(env)
+
+// --- Database ---
+const dbPool = getPool(env.DATABASE_URL)
+const TENANT_KEY = process.env.TENANT_ID ?? 'clickpe'
+let tenantUUID: string | null = null
+
+const getTenantId = async (): Promise<string> => {
+  if (!tenantUUID) {
+    const resolved = await ensureTenant(dbPool, TENANT_KEY)
+    tenantUUID = resolved
+    console.info(`[api-gateway] Tenant '${TENANT_KEY}' → ${tenantUUID}`)
+  }
+  return tenantUUID
+}
 
 app.get('/health', async () => ({ ok: true, service: 'api-gateway' }))
 
@@ -167,6 +182,74 @@ app.get('/dashboard/events', { preHandler: protectedHandler }, async () => {
   return {
     events: eventLogger.list().slice(-200)
   }
+})
+
+// --- User Management (DB-backed) ---
+
+app.post('/users/upload-csv', { preHandler: protectedHandler }, async (request, reply) => {
+  const body = request.body as { rows?: Array<Record<string, string>> }
+  if (!body?.rows || !Array.isArray(body.rows) || body.rows.length === 0) {
+    return reply.status(400).send({ error: 'rows array is required' })
+  }
+
+  const tid = await getTenantId()
+  const mapped = body.rows.map(r => ({
+    externalUserId: r.customer_id || r.external_user_id || '',
+    fullName: r.name || r.full_name || 'Unknown',
+    phoneE164: r.mobile || r.phone || '',
+    currentStage: (r.status || 'fresh_loan').toLowerCase(),
+    partnerCaseId: r.loan_application_no || r.partner_case_id || crypto.randomUUID(),
+    loanAmount: r.loan_amount ? Number.parseFloat(r.loan_amount) : undefined,
+    firmName: r.firm_name || undefined,
+    city: r.current_city || r.city || undefined,
+    state: r.current_state || r.state || undefined
+  }))
+
+  const result = await insertUsers(dbPool, tid, mapped)
+
+  eventLogger.log({
+    event: 'csv_users_uploaded',
+    level: 'info',
+    payload: { inserted: result.inserted, skipped: result.skipped, total: body.rows.length }
+  })
+
+  return reply.send({ ok: true, ...result, total: body.rows.length })
+})
+
+app.get('/users', { preHandler: protectedHandler }, async () => {
+  const tid = await getTenantId()
+  const users = await listUsers(dbPool, tid)
+  return { users }
+})
+
+app.get('/users/:id', { preHandler: protectedHandler }, async (request, reply) => {
+  const userId = (request.params as { id: string }).id
+  const user = await getUserById(dbPool, userId)
+  if (!user) {
+    return reply.status(404).send({ error: 'user_not_found' })
+  }
+  return { user }
+})
+
+app.patch('/users/:id/stage', { preHandler: protectedHandler }, async (request, reply) => {
+  const userId = (request.params as { id: string }).id
+  const body = request.body as { stage?: string }
+  if (!body?.stage) {
+    return reply.status(400).send({ error: 'stage is required' })
+  }
+
+  const updated = await updateUserStage(dbPool, userId, body.stage)
+  if (!updated) {
+    return reply.status(404).send({ error: 'user_or_loan_case_not_found' })
+  }
+
+  eventLogger.log({
+    event: 'user_stage_updated',
+    level: 'info',
+    payload: { userId, newStage: body.stage }
+  })
+
+  return { ok: true, userId, stage: body.stage }
 })
 
 app

@@ -8,6 +8,10 @@ The runtime agent uses external skill specifications instead of fixed response s
 - `skills/support-specialist/SKILL.md`
 - `skills/compliance-guard/SKILL.md`
 - `skills/tooling-policy/SKILL.md`
+- `skills/persuasion-policy/SKILL.md`
+- `skills/stage-router/SKILL.md`
+- `skills/call-escalation/SKILL.md`
+- `skills/daily-ops-loop/SKILL.md`
 
 ## How runtime uses skills
 1. `agent-runtime` loads all `skills/*/SKILL.md` on startup.

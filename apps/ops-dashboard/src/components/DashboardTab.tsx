@@ -1,4 +1,11 @@
+import { type ReactNode, useState } from 'react'
 import type { EventItem, FunnelMetrics, PendingHITLTask, SessionItem } from '../types'
+
+const priorityStyles: Record<string, { bg: string; color: string; label: string }> = {
+  P1: { bg: '#fee2e2', color: '#dc2626', label: '🔴 P1 — Call Now' },
+  P2: { bg: '#fff7ed', color: '#ea580c', label: '🟠 P2 — Next Block' },
+  P3: { bg: '#fefce8', color: '#ca8a04', label: '🟡 P3 — Scheduled' }
+}
 
 interface DashboardTabProps {
   metrics: FunnelMetrics
@@ -7,7 +14,9 @@ interface DashboardTabProps {
   pendingTasks: PendingHITLTask[]
   onApprove: (id: string) => void
   onReject: (id: string) => void
+  onMarkCalled: (id: string) => void
   fakeOverrideStatus: (userId: string, newStatus: string) => void
+  csvUploadSlot?: ReactNode
 }
 
 export function DashboardTab({
@@ -17,8 +26,13 @@ export function DashboardTab({
   pendingTasks,
   onApprove,
   onReject,
-  fakeOverrideStatus
+  onMarkCalled,
+  fakeOverrideStatus,
+  csvUploadSlot
 }: DashboardTabProps) {
+  const callQueue = pendingTasks.filter(t => t.callPriority && t.callPriority !== 'none')
+  const [expandedScript, setExpandedScript] = useState<string | null>(null)
+
   return (
     <>
       <section className="grid">
@@ -29,6 +43,143 @@ export function DashboardTab({
           </article>
         ))}
       </section>
+
+      {csvUploadSlot && (
+        <section className="card" style={{ marginBottom: '2rem' }}>
+          <h2>📤 Upload Users (CSV)</h2>
+          <p className="muted">Upload a CSV from ClickPe to import users into the database.</p>
+          {csvUploadSlot}
+        </section>
+      )}
+
+      {callQueue.length > 0 && (
+        <section className="card" style={{ marginBottom: '2rem', border: '2px solid #ea580c' }}>
+          <h2>📞 Call Queue — Manual Calls Required</h2>
+          <p className="muted">Users who need a phone call. Use the script below for each call.</p>
+          {callQueue
+            .sort((a, b) => (a.callPriority ?? '').localeCompare(b.callPriority ?? ''))
+            .map(task => {
+              const style = priorityStyles[task.callPriority ?? '']
+              const isExpanded = expandedScript === task.id
+              return (
+                <div
+                  key={`call-${task.id}`}
+                  style={{
+                    padding: '1rem',
+                    marginBottom: '0.75rem',
+                    borderRadius: '8px',
+                    background: style?.bg ?? '#f5f5f5',
+                    borderLeft: `4px solid ${style?.color ?? '#999'}`
+                  }}
+                >
+                  <div className="row" style={{ flexWrap: 'wrap', gap: '8px' }}>
+                    <div>
+                      <strong style={{ fontSize: '1.05rem' }}>{task.userName ?? task.externalUserId}</strong>
+                      {task.firmName && (
+                        <span className="muted" style={{ marginLeft: '8px' }}>
+                          ({task.firmName})
+                        </span>
+                      )}
+                    </div>
+                    <span style={{ fontWeight: 700, color: style?.color ?? '#333', fontSize: '0.85rem' }}>
+                      {style?.label ?? task.callPriority}
+                    </span>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '4px 16px',
+                      margin: '8px 0',
+                      fontSize: '0.9rem'
+                    }}
+                  >
+                    {task.mobile && (
+                      <span>
+                        📱 <strong>{task.mobile}</strong>
+                      </span>
+                    )}
+                    <span>
+                      Stage: <span className="badge info">{task.stage}</span>
+                    </span>
+                    {task.pendingStep && (
+                      <span>
+                        ⏳ Pending: <strong>{task.pendingStep}</strong>
+                      </span>
+                    )}
+                    {task.loanAmount && <span>💰 Loan: ₹{task.loanAmount.toLocaleString('en-IN')}</span>}
+                  </div>
+
+                  {task.callReason && (
+                    <p style={{ margin: '4px 0', fontSize: '0.9rem' }}>
+                      <strong>Reason:</strong> {task.callReason}
+                    </p>
+                  )}
+                  {task.blockerCode && (
+                    <p style={{ margin: '2px 0', fontSize: '0.85rem' }} className="muted">
+                      Blocker: <code>{task.blockerCode}</code>
+                    </p>
+                  )}
+
+                  {task.callScript && (
+                    <div style={{ marginTop: '8px' }}>
+                      <button
+                        type="button"
+                        className="secondary"
+                        style={{ fontSize: '0.8rem', padding: '4px 10px' }}
+                        onClick={() => setExpandedScript(isExpanded ? null : task.id)}
+                      >
+                        {isExpanded ? '▼ Hide Call Script' : '▶ Show Call Script'}
+                      </button>
+                      {isExpanded && (
+                        <pre
+                          style={{
+                            background: '#fff',
+                            border: '1px solid #ddd',
+                            borderRadius: '6px',
+                            padding: '10px',
+                            marginTop: '6px',
+                            fontSize: '0.85rem',
+                            whiteSpace: 'pre-wrap',
+                            lineHeight: 1.5
+                          }}
+                        >
+                          {task.callScript}
+                        </pre>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="row gap-sm" style={{ marginTop: '10px' }}>
+                    {!task.called ? (
+                      <button type="button" onClick={() => onMarkCalled(task.id)}>
+                        ✅ Mark Called
+                      </button>
+                    ) : (
+                      <span className="badge on" style={{ padding: '6px 12px' }}>
+                        ✓ Called
+                      </span>
+                    )}
+                    <select
+                      onChange={e => fakeOverrideStatus(task.externalUserId, e.target.value)}
+                      defaultValue=""
+                      style={{ fontSize: '0.85rem' }}
+                    >
+                      <option value="" disabled>
+                        Override Status...
+                      </option>
+                      <option value="loan_detail_submitted">Loan Detail Submitted</option>
+                      <option value="under_review">Under Review</option>
+                      <option value="credit_decisioning">Credit Decisioning</option>
+                      <option value="converted">Converted</option>
+                    </select>
+                  </div>
+                </div>
+              )
+            })}
+        </section>
+      )}
 
       <section
         className="card"
@@ -44,7 +195,8 @@ export function DashboardTab({
           >
             <div className="row">
               <strong>
-                User ID: {task.externalUserId} | Stage: <span className="badge info">{task.stage}</span>
+                {task.userName ?? task.externalUserId} | Stage:{' '}
+                <span className="badge info">{task.stage}</span>
               </strong>
               <select onChange={e => fakeOverrideStatus(task.externalUserId, e.target.value)} defaultValue="">
                 <option value="" disabled>

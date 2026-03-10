@@ -27,9 +27,29 @@ export type PendingHITLTask = {
   messageBody: string
   status: 'drafting_required'
   createdAt: string
+  callPriority?: 'P1' | 'P2' | 'P3' | 'none'
+  callReason?: string
+  blockerCode?: string
+  userName?: string
+  firmName?: string
+  pendingStep?: string
+  callScript?: string
+  loanAmount?: number
+  mobile?: string
+  called?: boolean
 }
 
 export type ChatMessage = {
   role: 'user' | 'agent' | 'system'
   text: string
+}
+
+export type CsvUser = {
+  id: string
+  customerId: string
+  name: string
+  firmName: string
+  mobile: string
+  status: string
+  loanAmount: number
 }

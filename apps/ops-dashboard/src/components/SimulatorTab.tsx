@@ -1,5 +1,8 @@
 import { type FormEvent, useState } from 'react'
-import type { ChatMessage } from '../types'
+import type { ChatMessage, CsvUser } from '../types'
+import { UserPicker } from './UserPicker'
+
+const SANDBOX_WHATSAPP_NUMBER = '9484812168'
 
 type WhatsAppButtonMessage = {
   text: string
@@ -8,8 +11,6 @@ type WhatsAppButtonMessage = {
 }
 
 const parseWhatsAppMessage = (text: string): WhatsAppButtonMessage => {
-  // Parse formatted plainText from agent-runtime
-  // The format is: <body>\n\n🔗 <label>: <url>\n\n_<footer>_
   const buttonMatch = text.match(/🔗 (.+?): (https?:\/\/\S+)/)
   if (buttonMatch) {
     const [, buttonLabel, buttonUrl] = buttonMatch
@@ -23,8 +24,39 @@ export function SimulatorTab() {
   const [simMessage, setSimMessage] = useState<string>('')
   const [simHistory, setSimHistory] = useState<ChatMessage[]>([])
   const [simUserStage, setSimUserStage] = useState<string>('fresh_loan')
-  const [simMobile, setSimMobile] = useState<string>('9876543210')
+  const [simMobile, setSimMobile] = useState<string>(SANDBOX_WHATSAPP_NUMBER)
+  const [simUserName, setSimUserName] = useState<string>('Sandbox User')
   const [simIsLoading, setSimIsLoading] = useState<boolean>(false)
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [sendViaWhatsApp, setSendViaWhatsApp] = useState<boolean>(false)
+  const [whatsAppStatus, setWhatsAppStatus] = useState<string>('')
+
+  const handleUserSelect = (user: CsvUser) => {
+    setSelectedUserId(user.id)
+    setSimMobile(user.mobile)
+    setSimUserName(user.name)
+    setSimUserStage(user.status.toLowerCase())
+  }
+
+  const sendToWhatsApp = async (body: string) => {
+    try {
+      const response = await fetch('http://localhost:3040/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: crypto.randomUUID(),
+          toPhoneE164: `91${SANDBOX_WHATSAPP_NUMBER}`,
+          body
+        })
+      })
+      if (!response.ok) throw new Error(`WhatsApp send failed: ${response.status}`)
+      const data = await response.json()
+      setWhatsAppStatus(`✅ Sent via WhatsApp (${data.status ?? 'submitted'})`)
+    } catch (err) {
+      setWhatsAppStatus(`❌ WhatsApp send failed: ${(err as Error).message}`)
+    }
+    setTimeout(() => setWhatsAppStatus(''), 5000)
+  }
 
   const sendSimMessage = async (e: FormEvent) => {
     e.preventDefault()
@@ -43,12 +75,12 @@ export function SimulatorTab() {
           session: {
             tenantId: 'sim_tenant',
             sessionId: 'sim_session_123',
-            userProfileId: 'sim_user',
+            userProfileId: selectedUserId ?? 'sim_user',
             contactIdentifier: simMobile,
             summaryState: { stageContext: simUserStage, preferredLanguage: 'hinglish' },
             compactFacts: {
               mobile_number: simMobile,
-              user_name: 'Sandbox User'
+              user_name: simUserName
             }
           },
           lastInboundMessage: {
@@ -63,6 +95,10 @@ export function SimulatorTab() {
       if (!response.ok) throw new Error('Failed to reach agent-runtime at port 3010')
       const data = await response.json()
       setSimHistory(prev => [...prev, { role: 'agent', text: data.body }])
+
+      if (sendViaWhatsApp) {
+        await sendToWhatsApp(data.body)
+      }
     } catch (err: unknown) {
       setSimHistory(prev => [...prev, { role: 'system', text: `ERROR: ${(err as Error).message}` }])
     } finally {
@@ -80,12 +116,12 @@ export function SimulatorTab() {
           session: {
             tenantId: 'sim_tenant',
             sessionId: 'sim_session_123',
-            userProfileId: 'sim_user',
+            userProfileId: selectedUserId ?? 'sim_user',
             contactIdentifier: simMobile,
             summaryState: { stageContext: simUserStage, preferredLanguage: 'hinglish' },
             compactFacts: {
               mobile_number: simMobile,
-              user_name: 'Sandbox User'
+              user_name: simUserName
             }
           },
           trigger: 'scheduled_followup'
@@ -94,6 +130,10 @@ export function SimulatorTab() {
       if (!response.ok) throw new Error('Failed to reach agent-runtime')
       const data = await response.json()
       setSimHistory(prev => [...prev, { role: 'agent', text: `[Proactive Nudge]\n${data.body}` }])
+
+      if (sendViaWhatsApp) {
+        await sendToWhatsApp(data.body)
+      }
     } catch (err: unknown) {
       setSimHistory(prev => [...prev, { role: 'system', text: `ERROR: ${(err as Error).message}` }])
     } finally {
@@ -101,31 +141,38 @@ export function SimulatorTab() {
     }
   }
 
+  const sendDirectWhatsApp = async () => {
+    if (!simMessage.trim()) return
+    const text = simMessage
+    setSimMessage('')
+    setSimHistory(prev => [...prev, { role: 'user', text: `[Direct WhatsApp] ${text}` }])
+    await sendToWhatsApp(text)
+  }
+
   return (
-    <section className="card" style={{ maxWidth: '800px', margin: '0 auto' }}>
-      <h2>Sandbox Chat Simulator</h2>
+    <section className="card" style={{ maxWidth: '900px', margin: '0 auto' }}>
+      <h2>🧪 Sandbox Simulator</h2>
       <p className="muted">
-        Test agent responses exactly as a WhatsApp user would see them — including deep link buttons.
+        Test agent responses and send real WhatsApp messages to your test number ({SANDBOX_WHATSAPP_NUMBER}).
       </p>
 
+      <UserPicker onSelect={handleUserSelect} selectedUserId={selectedUserId} />
+
       <div
-        className="row gap-sm"
         style={{
-          marginBottom: '1rem',
           background: '#f5f5f5',
           padding: '1rem',
-          borderRadius: '4px',
+          borderRadius: '6px',
+          marginBottom: '1rem',
+          display: 'flex',
           flexWrap: 'wrap',
-          gap: '12px'
+          gap: '12px',
+          alignItems: 'center'
         }}
       >
-        <label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           Stage:
-          <select
-            value={simUserStage}
-            onChange={e => setSimUserStage(e.target.value)}
-            style={{ marginLeft: '8px' }}
-          >
+          <select value={simUserStage} onChange={e => setSimUserStage(e.target.value)}>
             <option value="login">login</option>
             <option value="fresh_loan">fresh_loan</option>
             <option value="document_upload">document_upload</option>
@@ -134,18 +181,81 @@ export function SimulatorTab() {
             <option value="credit_decisioning">credit_decisioning</option>
           </select>
         </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           Mobile:
           <input
             type="text"
             value={simMobile}
             onChange={e => setSimMobile(e.target.value)}
-            style={{ width: '140px', marginLeft: '4px' }}
-            placeholder="User phone number"
+            style={{ width: '130px' }}
           />
         </label>
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          Name:
+          <input
+            type="text"
+            value={simUserName}
+            onChange={e => setSimUserName(e.target.value)}
+            style={{ width: '150px' }}
+          />
+        </label>
+
+        <div
+          style={{
+            width: '1px',
+            height: '24px',
+            background: '#ccc'
+          }}
+        />
+
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            cursor: 'pointer',
+            background: sendViaWhatsApp ? '#dcf8c6' : 'transparent',
+            padding: '4px 8px',
+            borderRadius: '6px',
+            border: sendViaWhatsApp ? '1px solid #25d366' : '1px solid #ccc'
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={sendViaWhatsApp}
+            onChange={e => setSendViaWhatsApp(e.target.checked)}
+          />
+          📱 Send via WhatsApp ({SANDBOX_WHATSAPP_NUMBER})
+        </label>
+      </div>
+
+      {whatsAppStatus && (
+        <p
+          style={{
+            padding: '6px 12px',
+            borderRadius: '6px',
+            background: whatsAppStatus.startsWith('✅') ? '#dcf8c6' : '#fee2e2',
+            fontSize: '0.85rem',
+            marginBottom: '0.5rem'
+          }}
+        >
+          {whatsAppStatus}
+        </p>
+      )}
+
+      <div className="row gap-sm" style={{ marginBottom: '0.75rem' }}>
         <button type="button" className="secondary" onClick={simulateProactiveNudge} disabled={simIsLoading}>
-          Trigger Proactive Nudge
+          🔔 Trigger Proactive Nudge
+        </button>
+        <button
+          type="button"
+          className="secondary"
+          onClick={sendDirectWhatsApp}
+          disabled={!simMessage.trim()}
+        >
+          📱 Send Direct WhatsApp
         </button>
         <button type="button" className="secondary" onClick={() => setSimHistory([])}>
           Clear Chat
@@ -154,7 +264,7 @@ export function SimulatorTab() {
 
       <div
         style={{
-          height: '440px',
+          height: '400px',
           overflowY: 'auto',
           border: '1px solid #ccc',
           borderRadius: '4px',
@@ -171,7 +281,7 @@ export function SimulatorTab() {
             className="muted"
             style={{ textAlign: 'center', marginTop: 'auto', marginBottom: 'auto', color: '#888' }}
           >
-            No messages yet. Trigger a nudge or type below.
+            No messages yet. Select a user, trigger a nudge, or type below.
           </p>
         ) : null}
         {simHistory.map((msg, i) => {
@@ -233,7 +343,7 @@ export function SimulatorTab() {
                   <strong
                     style={{ fontSize: '0.75rem', color: '#666', display: 'block', marginBottom: '4px' }}
                   >
-                    {msg.role === 'user' ? 'You' : 'System'}
+                    {msg.role === 'user' ? `You (${simUserName})` : 'System'}
                   </strong>
                   <span style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</span>
                 </div>
@@ -255,7 +365,7 @@ export function SimulatorTab() {
           type="text"
           value={simMessage}
           onChange={e => setSimMessage(e.target.value)}
-          placeholder="Type a message as the user..."
+          placeholder={`Type a message as ${simUserName}...`}
           style={{ flex: 1 }}
           disabled={simIsLoading}
         />
