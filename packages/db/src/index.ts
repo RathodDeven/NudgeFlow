@@ -107,7 +107,15 @@ export const insertUsers = async (
         `INSERT INTO loan_cases (id, tenant_id, user_id, partner_case_id, current_stage, loan_amount, firm_name)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT (tenant_id, partner_case_id) DO UPDATE SET current_stage = $5, loan_amount = $6, firm_name = $7`,
-        [loanCaseId, tenantId, actualUserId, row.partnerCaseId, row.currentStage, row.loanAmount ?? null, row.firmName ?? null]
+        [
+          loanCaseId,
+          tenantId,
+          actualUserId,
+          row.partnerCaseId,
+          row.currentStage,
+          row.loanAmount ?? null,
+          row.firmName ?? null
+        ]
       )
 
       inserted++

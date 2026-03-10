@@ -193,10 +193,13 @@ app.post('/users/upload-csv', { preHandler: protectedHandler }, async (request, 
   }
 
   const tid = await getTenantId()
+  const stripQuotes = (s: string) => s.replace(/^["']+|["']+$/g, '').trim()
+  const normalisePhone = (s: string) => s.replace(/\s+/g, '').replace(/^\+?91/, '')
+
   const mapped = body.rows.map(r => ({
-    externalUserId: r.customer_id || r.external_user_id || '',
+    externalUserId: stripQuotes(r.customer_id || r.external_user_id || ''),
     fullName: r.name || r.full_name || 'Unknown',
-    phoneE164: r.mobile || r.phone || '',
+    phoneE164: normalisePhone(r.mobile || r.phone || ''),
     currentStage: (r.status || 'fresh_loan').toLowerCase(),
     partnerCaseId: r.loan_application_no || r.partner_case_id || crypto.randomUUID(),
     loanAmount: r.loan_amount ? Number.parseFloat(r.loan_amount) : undefined,

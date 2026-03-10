@@ -8,15 +8,66 @@ interface CsvUploadProps {
 
 type ParsedRow = Record<string, string>
 
+/**
+ * RFC 4180-compliant CSV parser.
+ * Handles: quoted fields with embedded commas, escaped quotes (""),
+ * CRLF/LF line endings, and leading/trailing whitespace on headers.
+ */
 const parseCSV = (text: string): ParsedRow[] => {
-  const lines = text.split('\n').filter(line => line.trim())
+  // Normalise line endings
+  const normalised = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim()
+  if (!normalised) return []
+
+  // Tokenise the whole file respecting quoted fields
+  const tokeniseLine = (line: string): string[] => {
+    const fields: string[] = []
+    let i = 0
+    while (i <= line.length) {
+      if (line[i] === '"') {
+        // Quoted field — scan forward for closing quote
+        let j = i + 1
+        let value = ''
+        while (j < line.length) {
+          if (line[j] === '"') {
+            if (line[j + 1] === '"') {
+              // Escaped quote
+              value += '"'
+              j += 2
+            } else {
+              j++ // skip closing quote
+              break
+            }
+          } else {
+            value += line[j]
+            j++
+          }
+        }
+        fields.push(value.trim())
+        // Skip comma separator
+        if (line[j] === ',') j++
+        i = j
+      } else {
+        // Unquoted field — read until next comma
+        const end = line.indexOf(',', i)
+        if (end === -1) {
+          fields.push(line.slice(i).trim())
+          break
+        }
+        fields.push(line.slice(i, end).trim())
+        i = end + 1
+      }
+    }
+    return fields
+  }
+
+  const lines = normalised.split('\n').filter(l => l.trim())
   if (lines.length < 2) return []
 
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'))
+  const headers = tokeniseLine(lines[0]).map(h => h.toLowerCase().replace(/\s+/g, '_'))
   const rows: ParsedRow[] = []
 
   for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(',').map(v => v.replace(/^["']+|["']+$/g, '').trim())
+    const values = tokeniseLine(lines[i])
     const row: ParsedRow = {}
     for (let j = 0; j < headers.length; j++) {
       row[headers[j]] = values[j] ?? ''

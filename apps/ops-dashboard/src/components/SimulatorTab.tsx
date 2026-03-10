@@ -2,6 +2,10 @@ import { type FormEvent, useState } from 'react'
 import type { ChatMessage, CsvUser } from '../types'
 import { UserPicker } from './UserPicker'
 
+interface SimulatorTabProps {
+  users: CsvUser[]
+}
+
 const SANDBOX_WHATSAPP_NUMBER = '9484812168'
 
 type WhatsAppButtonMessage = {
@@ -20,7 +24,7 @@ const parseWhatsAppMessage = (text: string): WhatsAppButtonMessage => {
   return { text }
 }
 
-export function SimulatorTab() {
+export function SimulatorTab({ users }: SimulatorTabProps) {
   const [simMessage, setSimMessage] = useState<string>('')
   const [simHistory, setSimHistory] = useState<ChatMessage[]>([])
   const [simUserStage, setSimUserStage] = useState<string>('fresh_loan')
@@ -156,7 +160,7 @@ export function SimulatorTab() {
         Test agent responses and send real WhatsApp messages to your test number ({SANDBOX_WHATSAPP_NUMBER}).
       </p>
 
-      <UserPicker onSelect={handleUserSelect} selectedUserId={selectedUserId} />
+      <UserPicker users={users} onSelect={handleUserSelect} selectedUserId={selectedUserId} />
 
       <div
         style={{

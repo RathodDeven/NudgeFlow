@@ -4,7 +4,7 @@ import { CsvUpload } from './components/CsvUpload'
 import { DashboardTab } from './components/DashboardTab'
 import { Login } from './components/Login'
 import { SimulatorTab } from './components/SimulatorTab'
-import type { EventItem, FunnelMetrics, PendingHITLTask, SessionItem } from './types'
+import type { CsvUser, EventItem, FunnelMetrics, PendingHITLTask, SessionItem } from './types'
 
 export function App() {
   const [token, setToken] = useState<string | null>(null)
@@ -14,6 +14,7 @@ export function App() {
   const [sessions, setSessions] = useState<SessionItem[]>([])
   const [events, setEvents] = useState<EventItem[]>([])
   const [pendingTasks, setPendingTasks] = useState<PendingHITLTask[]>([])
+  const [csvUsers, setCsvUsers] = useState<CsvUser[]>([])
   const [dataError, setDataError] = useState<string>('')
   const [currentTab, setCurrentTab] = useState<'dashboard' | 'simulator'>('dashboard')
 
@@ -32,67 +33,34 @@ export function App() {
     setMetrics(funnel)
     setSessions(sessionPayload.sessions)
     setEvents(eventsPayload.events)
+    setPendingTasks([])
 
-    // Mock loading pending HITL tasks
-    setPendingTasks([
-      {
-        id: 'mock-task-1',
-        externalUserId: 'LS_POIOUY_VdEswDiAJl',
-        stage: 'fresh_loan',
-        messageBody:
-          'Hi! Main Neha bol rahi hoon ClickPe se. Aapka loan application thoda baaki hai, document upload kijiye kripya.',
-        status: 'drafting_required',
-        createdAt: new Date().toISOString(),
-        callPriority: 'P1',
-        callReason: 'User reported bill mismatch — needs fallback document guidance',
-        blockerCode: 'bill_mismatch',
-        userName: 'KAMINI MANILAL PATEL',
-        firmName: 'KAMINI IMITATION',
-        mobile: '9328620693',
-        loanAmount: 80000,
-        pendingStep: 'Upload electricity bill (or alternate docs)',
-        callScript:
-          'Hi Kamini ji, main Neha bol rahi hoon ClickPe se.\n\nAapka loan ₹80,000 approved hai, bas documents upload karna hai.\n\nAgar electricity bill aapke naam pe nahi hai, toh aap:\n1. Relationship proof (ration card / rent agreement)\n2. Father ka Aadhaar card\n\nYe dono upload kar dijiye, main aapki application aage move kar dungi.\n\nKya aap abhi upload kar sakte hain?'
-      },
-      {
-        id: 'mock-task-2',
-        externalUserId: 'LS_POIOUY_gzEUMGLdyY',
-        stage: 'fresh_loan',
-        messageBody:
-          'Hi Surinder! Neha here from ClickPe. Your 1 Lakh loan offer is waiting. Please upload your documents to proceed.',
-        status: 'drafting_required',
-        createdAt: new Date().toISOString(),
-        callPriority: 'P2',
-        callReason: 'No stage movement for 1 day after WhatsApp contact',
-        blockerCode: 'confused',
-        userName: 'SURINDER SINGH',
-        firmName: 'Surinder',
-        mobile: '6026021647',
-        loanAmount: 100000,
-        pendingStep: 'Upload Udyam card + electricity bill',
-        callScript:
-          'Hi Surinder ji, main Neha bol rahi hoon ClickPe se.\n\nAapka ₹1,00,000 ka loan offer ready hai. Aage badhne ke liye bas 2 documents chahiye:\n1. Udyam card\n2. Electricity bill\n\nKya aapko upload karne mein koi dikkat aa rahi hai? Main link bhej sakti hoon.'
-      },
-      {
-        id: 'mock-task-3',
-        externalUserId: 'LS_POIOUY_hePDmpckPD',
-        stage: 'loan_detail_submitted',
-        messageBody:
-          'Rahul, aapke documents submit ho gaye hain! Ab digital verification baaki hai — DigiLocker, Aadhaar KYC, selfie.',
-        status: 'drafting_required',
-        createdAt: new Date().toISOString(),
-        callPriority: 'P3',
-        callReason: 'Documents submitted but verification not started for 2 days',
-        blockerCode: 'technical_issue',
-        userName: 'RAHUL DAS',
-        firmName: 'RAHUL STORE',
-        mobile: '8250496570',
-        loanAmount: 95000,
-        pendingStep: 'Complete DigiLocker + KYC + selfie + shop photo',
-        callScript:
-          'Hi Rahul ji, main Neha bol rahi hoon ClickPe se.\n\nAapke documents submit ho chuke hain — bahut accha!\n\nAb digital verification karna hai:\n1. DigiLocker verify karein\n2. Aadhaar KYC complete karein\n3. Selfie dein\n4. Shop ki photo upload karein\n\nKya koi technical issue aa raha hai? Main abhi link bhej sakti hoon.'
-      }
-    ])
+    // Load real CSV users from API (populated via CSV upload)
+    authFetch<{
+      users: Array<{
+        id: string
+        externalUserId: string
+        fullName: string | null
+        phoneE164: string
+        currentStage?: string
+        loanAmount?: number
+        firmName?: string
+      }>
+    }>('/users', authToken)
+      .then(res =>
+        setCsvUsers(
+          res.users.map(u => ({
+            id: u.id,
+            customerId: u.externalUserId,
+            name: u.fullName ?? 'Unknown',
+            firmName: u.firmName ?? '',
+            mobile: u.phoneE164.replace(/^\+?91/, ''),
+            status: (u.currentStage ?? 'fresh_loan').toUpperCase(),
+            loanAmount: u.loanAmount ?? 0
+          }))
+        )
+      )
+      .catch(() => setCsvUsers([]))
   }, [])
 
   useEffect(() => {
@@ -132,6 +100,7 @@ export function App() {
     setSessions([])
     setEvents([])
     setPendingTasks([])
+    setCsvUsers([])
   }
 
   const handleApprove = (taskId: string) => {
@@ -229,7 +198,7 @@ export function App() {
             }
           />
         ) : (
-          <SimulatorTab />
+          <SimulatorTab users={csvUsers} />
         )}
       </main>
     </div>
