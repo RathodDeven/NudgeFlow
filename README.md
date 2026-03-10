@@ -234,3 +234,35 @@ n8n is self-hosted via Docker (`infra/docker/docker-compose.yml`, port 5678) and
 2. Build the daily batch workflow using the template pattern (Schedule Trigger → HTTP Request → agent-runtime)
 3. Add a WhatsApp Trigger node pointing to `channel-whatsapp` webhook
 4. Gradually remove HITL approval gates as confidence grows
+---
+
+## Project Rollout Phases
+
+NudgeFlow is being developed and deployed in three deliberate phases to ensure quality and safety:
+
+### Phase 1: Human-in-the-Loop (Current)
+- **Goal:** Test LLM prompt quality and ensure relevancy without risking bad messages sent to real users.
+- **Process:** Admin uploads CSV → Users appear in dashboard → Admin clicks "Simulate" to see the AI-generated message → Admin manually reviews and sends via WhatsApp (or calls).
+- **No Automation:** No messages are sent automatically upon CSV upload. 
+
+### Phase 2: Sandbox Automation
+- **Goal:** Test end-to-end automation in a safe environment.
+- **Process:** Admin uploads CSV → System automatically generates and sends the **first outreach message** to each user via the Sandbox WhatsApp number.
+- **Focus:** Validating webhook delivery, state transitions, and automatic follow-ups without human intervention.
+
+### Phase 3: Live Production
+- **Goal:** Full scale automated reactivation for real users.
+- **Process:** API connects to the lender → Drop-offs are ingested automatically → Agent sends approved WhatsApp templates → Conversational AI handles replies.
+- **Focus:** Tracking conversion metrics, user turnover, and ROI.
+
+---
+
+## Important: WhatsApp Business API Constraints
+When using the Gupshup API (or any WhatsApp Business provider), there is a strict rule regarding **Template vs. Free-form (Session) Messages**:
+
+1. **The 24-Hour Window:** When a user replies to your WhatsApp number, a 24-hour "customer service window" opens. Inside this window, the AI Agent can generate and send **any free-form text**.
+2. **Template Messages:** If the 24-hour window is closed (or hasn't opened yet, e.g., reaching out to a user who just dropped off), you **CANNOT** send generated text. You **MUST** send a pre-approved WhatsApp Template Message (e.g., `"Hi {{name}}, your loan application is pending at {{stage}}. Click below to resume."`).
+
+**Impact on NudgeFlow:**
+- The **very first message** sent to a user from the CSV dropoff list *must* be an approved template. 
+- Once the user taps a reply button or types a response, the AI agent takes over and generates dynamic, personalized responses.
