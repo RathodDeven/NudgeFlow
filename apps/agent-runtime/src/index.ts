@@ -29,10 +29,14 @@ app.register(fastifyCors, {
 
 const skills = loadSkills(env.AGENT_SKILLS_DIR)
 
+import { fileURLToPath } from 'node:url'
+
 // --- Tenant Loading ---
 // All company-specific content (persona, knowledge, config) lives in tenants/<TENANT_ID>/
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 const TENANT_ID = process.env.TENANT_ID ?? 'clickpe'
-const tenantRoot = path.resolve(process.cwd(), 'tenants', TENANT_ID)
+const tenantRoot = path.resolve(__dirname, '../../../../tenants', TENANT_ID)
 
 const readTenantFile = async (filename: string): Promise<string> => {
   try {
