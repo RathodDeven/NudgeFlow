@@ -104,10 +104,10 @@ export const insertUsers = async (
       const actualUserId = userResult.rows[0]?.id as string
 
       await pool.query(
-        `INSERT INTO loan_cases (id, tenant_id, user_id, partner_case_id, current_stage)
-         VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT (tenant_id, partner_case_id) DO UPDATE SET current_stage = $5`,
-        [loanCaseId, tenantId, actualUserId, row.partnerCaseId, row.currentStage]
+        `INSERT INTO loan_cases (id, tenant_id, user_id, partner_case_id, current_stage, loan_amount, firm_name)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT (tenant_id, partner_case_id) DO UPDATE SET current_stage = $5, loan_amount = $6, firm_name = $7`,
+        [loanCaseId, tenantId, actualUserId, row.partnerCaseId, row.currentStage, row.loanAmount ?? null, row.firmName ?? null]
       )
 
       inserted++
@@ -128,7 +128,7 @@ export const listUsers = async (pool: pg.Pool, tenantId: string): Promise<DbUser
        up.locale_hint AS "localeHint", up.city, up.state,
        up.consent_provided AS "consentProvided", up.created_at AS "createdAt",
        lc.current_stage AS "currentStage", lc.partner_case_id AS "partnerCaseId",
-       lc.id AS "loanCaseId"
+       lc.id AS "loanCaseId", lc.loan_amount AS "loanAmount", lc.firm_name AS "firmName"
      FROM user_profiles up
      LEFT JOIN loan_cases lc ON lc.user_id = up.id AND lc.tenant_id = up.tenant_id
      WHERE up.tenant_id = $1
@@ -146,7 +146,7 @@ export const getUserById = async (pool: pg.Pool, userId: string): Promise<DbUser
        up.locale_hint AS "localeHint", up.city, up.state,
        up.consent_provided AS "consentProvided", up.created_at AS "createdAt",
        lc.current_stage AS "currentStage", lc.partner_case_id AS "partnerCaseId",
-       lc.id AS "loanCaseId"
+       lc.id AS "loanCaseId", lc.loan_amount AS "loanAmount", lc.firm_name AS "firmName"
      FROM user_profiles up
      LEFT JOIN loan_cases lc ON lc.user_id = up.id AND lc.tenant_id = up.tenant_id
      WHERE up.id = $1`,

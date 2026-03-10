@@ -8,14 +8,14 @@ Manual calls are the rescue channel. WhatsApp is default. Calls are used ONLY wh
 
 ## Call Priority Matrix
 
-| Priority | Condition | Action |
+| Priority | Condition | Action timing (Golden Window) |
 |---|---|---|
-| **P1** | User explicitly requests a call | Call same day |
-| **P1** | Bill mismatch / technical issue reported | Call same day |
-| **P1** | Under Review with VKYC/VPD pending | Call same day |
-| **P2** | No stage movement after 1 day | Call next available block |
+| **P1** | User explicitly requests a call | Call immediately |
+| **P1** | Bill mismatch / technical issue reported | Call same day (prefer 2:00 PM - 4:00 PM) |
+| **P1** | Under Review with VKYC/VPD pending | Call same day (prefer 2:00 PM - 4:00 PM) |
+| **P2** | No stage movement after 24 hours | Call next available block (10:00 AM or 2:00 PM) |
 | **P2** | Confused user (repeated unclear replies) | Call next available block |
-| **P3** | User said "busy" with a promised follow-up time | Call at promised time |
+| **P3** | User said "busy" with a promised follow-up time | Call exactly at promised time |
 
 ## General Call Framework
 
@@ -31,10 +31,10 @@ Manual calls are the rescue channel. WhatsApp is default. Calls are used ONLY wh
 ## Stage-Specific Call Scripts
 
 ### Fresh Loan
-- **Context:** "Your loan application has moved beyond offer acceptance."
-- **Requirement:** "We need your Udyam card and electricity bill uploaded."
-- **Fallback:** "If the electricity bill is not in your name, we need relationship proof and your father's Aadhaar."
-- **Commitment:** "Can you upload this now, today afternoon, or tonight?"
+- **Context:** "Namaste, I see your ₹{{loan_amount}} offer is approved and reserved, but the application is paused." *(Loss Aversion)*
+- **Requirement:** "We just need your Udyam card and electricity bill uploaded to release the funds."
+- **Fallback:** "If the electricity bill is not in your name, we just need relationship proof and your father's Aadhaar. It takes 2 minutes."
+- **Commitment:** "Can you upload this now, or would tonight between 7-9 PM be better?"
 
 ### Loan Detail Submitted
 - **Context:** "Your documents are submitted. Next step is digital verification."

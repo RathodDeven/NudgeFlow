@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS loan_cases (
   user_id UUID NOT NULL REFERENCES user_profiles(id),
   partner_case_id TEXT NOT NULL,
   current_stage TEXT NOT NULL,
+  loan_amount DECIMAL(12,2),
+  firm_name TEXT,
   is_reactivated BOOLEAN NOT NULL DEFAULT FALSE,
   deep_link TEXT,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
