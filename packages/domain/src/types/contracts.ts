@@ -18,6 +18,7 @@ export const sendMessageRequestSchema = z.object({
 export const generateReplyInputSchema = z.object({
   session: conversationSessionSchema,
   lastInboundMessage: messageEventSchema.optional(),
+  chatHistory: z.array(messageEventSchema).optional(),
   trigger: z.enum(['inbound_reply', 'scheduled_followup', 'manual_retry'])
 })
 

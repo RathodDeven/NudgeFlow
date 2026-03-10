@@ -139,7 +139,7 @@ export function UserDetailView({
             userId: mockUuid,
             loanCaseId: mockUuid,
             isAgentActive: true,
-            channel: 'sandbox',
+            channel: 'whatsapp',
             summaryState: { 
               sessionIntent: 'recovery',
               userObjections: [],
@@ -161,11 +161,19 @@ export function UserDetailView({
           lastInboundMessage: {
             id: mockUuid,
             sessionId: mockUuid,
-            channel: 'sandbox',
+            channel: 'whatsapp',
             direction: 'inbound',
             body: text,
             createdAt: nowStr
           },
+          chatHistory: messages.slice(-10).map(m => ({
+            id: mockUuid,
+            sessionId: mockUuid,
+            channel: 'whatsapp',
+            direction: m.direction || 'inbound',
+            body: m.body || '',
+            createdAt: m.createdAt || nowStr
+          })),
           trigger: 'inbound_reply'
         })
       })

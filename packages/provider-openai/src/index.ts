@@ -46,7 +46,6 @@ export const generateStructuredWithOpenAI = async <T>(
     model: request.model,
     instructions: request.systemPrompt,
     input: request.userPrompt,
-    temperature: 0,
     text: {
       format: {
         type: 'json_schema',

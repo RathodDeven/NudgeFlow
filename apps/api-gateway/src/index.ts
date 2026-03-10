@@ -8,7 +8,17 @@ import { createAuthToken, requireAdminAuth } from './auth'
 import { eventLogger, sessionState } from './state'
 
 const env = loadEnv()
-const app = Fastify({ logger: true })
+const app = Fastify({
+  logger: {
+    transport: {
+      target: 'pino-pretty',
+      options: {
+        translateTime: 'SYS:standard',
+        ignore: 'pid,hostname'
+      }
+    }
+  }
+})
 const protectedHandler = requireAdminAuth(env)
 
 // --- Database ---
@@ -53,7 +63,7 @@ app.post('/ingestion/excel', async (request, reply) => {
   const payload = ingestExcelRequestSchema.safeParse(request.body)
   if (!payload.success) {
     const errorBody = payload.error.flatten()
-    app.log.error({ msg: 'Ingestion payload validation failed', error: errorBody })
+    app.log.error({ msg: 'API Gateway: Ingestion Payload Validation Failed', error: errorBody.fieldErrors })
     return reply.status(400).send({ error: errorBody })
   }
 
@@ -94,7 +104,7 @@ app.post('/sessions/:id/handoff', { preHandler: protectedHandler }, async (reque
   const parsed = handoffRequestSchema.safeParse(request.body)
   if (!parsed.success) {
     const errorBody = parsed.error.flatten()
-    app.log.error({ msg: 'Handoff payload validation failed', error: errorBody })
+    app.log.error({ msg: 'API Gateway: Handoff Payload Validation Failed', error: errorBody.fieldErrors })
     return reply.status(400).send({ error: errorBody })
   }
 
@@ -115,7 +125,7 @@ app.post('/sessions/:id/resume', { preHandler: protectedHandler }, async (reques
   const parsed = handoffRequestSchema.safeParse(request.body)
   if (!parsed.success) {
     const errorBody = parsed.error.flatten()
-    app.log.error({ msg: 'Resume payload validation failed', error: errorBody })
+    app.log.error({ msg: 'API Gateway: Resume Payload Validation Failed', error: errorBody.fieldErrors })
     return reply.status(400).send({ error: errorBody })
   }
 

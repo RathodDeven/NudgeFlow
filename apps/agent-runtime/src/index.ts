@@ -19,7 +19,17 @@ type AgentState = {
 }
 
 const env = loadEnv()
-const app = Fastify({ logger: true })
+const app = Fastify({
+  logger: {
+    transport: {
+      target: 'pino-pretty',
+      options: {
+        translateTime: 'SYS:standard',
+        ignore: 'pid,hostname'
+      }
+    }
+  }
+})
 
 // Enable CORS for dashboard local simulator
 app.register(fastifyCors, {
@@ -133,11 +143,11 @@ app.post('/agent/respond', async (request, reply) => {
   const parsed = generateReplyInputSchema.safeParse(request.body)
   if (!parsed.success) {
     const errorBody = parsed.error.flatten()
-    app.log.error({ msg: 'Agent Runtime payload validation failed', error: errorBody, body: request.body })
+    app.log.error({ msg: 'Agent Runtime payload validation failed', error: errorBody.fieldErrors })
     return reply.status(400).send({ error: errorBody })
   }
 
-  const { session, lastInboundMessage, trigger } = parsed.data
+  const { session, lastInboundMessage, trigger, chatHistory } = parsed.data
   const inboundText = lastInboundMessage?.body ?? ''
 
   let route = 'recovery'
@@ -172,11 +182,28 @@ app.post('/agent/respond', async (request, reply) => {
               buttonLabel: z.string().describe('The label for the CTA button according to channel rules.'),
               url: z.string().describe('The constructed deep link URL according to channel rules algorithm.')
             })
+            .nullable()
             .optional()
             .describe('Provide if the nudge logic requires a deep-link CTA.')
         })
         .describe('The entire payload to issue to the user.')
     })
+
+    const startTimeOpenAI = Date.now()
+    const renderedUserPrompt = [
+      '--- Chat History ---',
+      chatHistory && chatHistory.length > 0
+        ? chatHistory.map(m => `${m.direction === 'inbound' ? 'Customer' : 'Agent'}: ${m.body}`).join('\n')
+        : '(No previous messages)',
+      '--------------------',
+      `Current Inbound message: ${inboundText || '(none)'}`,
+      `Session summary: ${JSON.stringify(session.summaryState)}`,
+      `Stage: ${session.summaryState.stageContext}`,
+      `Exact mobile number: ${session.compactFacts.mobile_number || 'unknown'}`,
+      'Task: Analyze the Chat History above so you do not repeat yourself. Address any specific questions the user asks. Then classify intent, review compliance, and generate a contextual response payload adhering to channel rules.'
+    ].join('\n')
+
+    app.log.info({ msg: `=== Dispatching AI Prompt ===\n${renderedUserPrompt}\n=============================` })
 
     const response = await generateStructuredWithOpenAI({
       apiKey: env.OPENAI_API_KEY,
@@ -184,14 +211,10 @@ app.post('/agent/respond', async (request, reply) => {
       schema: responseSchema,
       schemaName: 'AgentResponse',
       systemPrompt: buildSystemPrompt('support'), // Use general support/recovery prompt
-      userPrompt: [
-        `Inbound message: ${inboundText || '(none)'}`,
-        `Session summary: ${JSON.stringify(session.summaryState)}`,
-        `Stage: ${session.summaryState.stageContext}`,
-        `Exact mobile number: ${session.compactFacts.mobile_number || 'unknown'}`,
-        'Task: Classify intent, review compliance, and generate a contextual response payload adhering to channel rules.'
-      ].join('\n')
+      userPrompt: renderedUserPrompt
     })
+    const timeOpenAI = Date.now() - startTimeOpenAI
+    app.log.info({ msg: 'OpenAI execution completed', timeMs: timeOpenAI })
 
     const { intent, requiresEscalation, isOutOfScope, whatsappPayload } = response.data as z.infer<
       typeof responseSchema
@@ -229,7 +252,9 @@ app.post('/agent/respond', async (request, reply) => {
   }
 
   const guardrail = guardOutboundMessage(llmText)
+  const startSarvam = Date.now()
   const language = await detectLanguage(inboundText || llmText, env.SARVAM_API_KEY, env.SARVAM_BASE_URL)
+  app.log.info({ msg: 'Sarvam Language Detection completed', timeMs: Date.now() - startSarvam })
 
   // If the guardrail intercepts, we must rebuild the payload
   if (guardrail.sanitizedMessage) {
