@@ -158,6 +158,7 @@ These are the only vars you need to run and test locally:
 | `PORT` | `3000` | API gateway port |
 | `TZ` | `Asia/Kolkata` | Timezone for outreach window checks |
 | `DATABASE_URL` | `postgres://user:pass@host/db?sslmode=require` | Neon DB (Sandbox/Dev) |
+| `REDIS_URL` | `redis://localhost:6379` | (Optional) Local Docker Redis |
 | `TENANT_ID` | `clickpe` | Loads `tenants/clickpe/` by default |
 | `AGENT_SKILLS_DIR` | `skills` | Path to agent skill files |
 | `ADMIN_USERNAME` | `admin` | Ops dashboard login |
@@ -214,11 +215,12 @@ pnpm format:check  # Format check
 
 ## TODO / Future Roadmap
 
-### n8n Automation (Not Used Yet)
+### Redis & n8n Automation (Future Roadmap)
 
-n8n is self-hosted via Docker (`infra/docker/docker-compose.yml`, port 5678) and 3 skeleton workflow JSONs exist in `apps/n8n/workflows/`, but **nothing in the codebase actually connects to or depends on n8n right now**.
+Both Redis and n8n are included for future scalability (e.g., real-time updates and complex automation) but are **NOT required for the current MVP phase**.
 
-**Why it's not needed yet:** The current operating model is fully **Human-in-the-Loop (HITL)** — every action (send message, trigger nudge, update stage, call a user) is initiated manually by the admin from the Ops Dashboard. There is no automated outreach, no scheduled batch runs, and no unattended message sending. In this mode, n8n adds complexity without value.
+- **Redis**: Will be used for session caching and real-time event pub/sub.
+- **n8n**: Will be used for scheduled outreach and batch processing. The current operating model is fully **Human-in-the-Loop (HITL)**.
 
 **When n8n becomes valuable:** Once the pilot proves the agent works correctly and the team is comfortable removing the human approval step, n8n can automate:
 

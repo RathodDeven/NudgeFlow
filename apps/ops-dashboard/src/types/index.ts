@@ -44,6 +44,15 @@ export type ChatMessage = {
   text: string
 }
 
+export type DbChatMessage = {
+  id: string
+  sessionId: string
+  channel: string
+  direction: 'inbound' | 'outbound' | 'system'
+  body: string
+  createdAt: string
+}
+
 export type CsvUser = {
   id: string
   customerId: string

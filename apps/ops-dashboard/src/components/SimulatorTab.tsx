@@ -8,35 +8,8 @@ interface SimulatorTabProps {
 
 const SANDBOX_WHATSAPP_NUMBER = '9484812168'
 
-type WhatsAppButtonMessage = {
-  text: string
-  buttonLabel?: string
-  buttonUrl?: string
-  imageUrl?: string
-}
-
-const parseWhatsAppMessage = (text: string): WhatsAppButtonMessage => {
-  const buttonMatch = text.match(/🔗 (.+?): (https?:\/\/\S+)/)
-  const imageMatch = text.match(/🖼️ Image: (https?:\/\/\S+)/)
-
-  let body = text
-  let buttonLabel: string | undefined
-  let buttonUrl: string | undefined
-  let imageUrl: string | undefined
-
-  if (buttonMatch) {
-    buttonLabel = buttonMatch[1]
-    buttonUrl = buttonMatch[2]
-    body = body.split('\n\n🔗')[0].trim()
-  }
-
-  if (imageMatch) {
-    imageUrl = imageMatch[1]
-    body = body.replace(/🖼️ Image: \S+/, '').trim()
-  }
-
-  return { text: body, buttonLabel, buttonUrl, imageUrl }
-}
+import { ChatBubble } from './ChatBubble'
+import { MessageInput } from './MessageInput'
 
 // Using the generated premium loan offer image
 const LOAN_TEMPLATE_IMAGE = 'https://raw.githubusercontent.com/NudgeFlow/assets/main/promo.png'
@@ -351,80 +324,9 @@ Neeche diye button par click karein aur 2 minute mein process poora karein. 👇
             No messages yet. Select a user, trigger a nudge, or type below.
           </p>
         ) : null}
-        {simHistory.map((msg, i) => {
-          const parsed = msg.role === 'agent' ? parseWhatsAppMessage(msg.text) : null
-          return (
-            <div
-              key={`${msg.role}-${i}`}
-              style={{
-                alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                maxWidth: '80%'
-              }}
-            >
-              {msg.role === 'agent' && parsed ? (
-                <div
-                  style={{
-                    background: '#fff',
-                    borderRadius: '8px',
-                    boxShadow: '0 1px 2px rgba(0,0,0,.15)',
-                    overflow: 'hidden'
-                  }}
-                >
-                  <div style={{ padding: '10px 14px' }}>
-                    <strong
-                      style={{ fontSize: '0.75rem', color: '#128C7E', display: 'block', marginBottom: '4px' }}
-                    >
-                      Neha
-                    </strong>
-                    {parsed.imageUrl && (
-                      <img
-                        src={parsed.imageUrl}
-                        alt="Promo"
-                        style={{ width: '100%', borderRadius: '4px', marginBottom: '8px', display: 'block' }}
-                      />
-                    )}
-                    <span style={{ whiteSpace: 'pre-wrap', color: '#111' }}>{parsed.text}</span>
-                  </div>
-                  {parsed.buttonLabel && parsed.buttonUrl ? (
-                    <a
-                      href={parsed.buttonUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        display: 'block',
-                        textAlign: 'center',
-                        padding: '10px',
-                        borderTop: '1px solid #e0e0e0',
-                        color: '#128C7E',
-                        textDecoration: 'none',
-                        fontWeight: 600,
-                        fontSize: '0.95rem'
-                      }}
-                    >
-                      🔗 {parsed.buttonLabel}
-                    </a>
-                  ) : null}
-                </div>
-              ) : (
-                <div
-                  style={{
-                    background: msg.role === 'user' ? '#dcf8c6' : '#ffebee',
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    boxShadow: '0 1px 2px rgba(0,0,0,.1)'
-                  }}
-                >
-                  <strong
-                    style={{ fontSize: '0.75rem', color: '#666', display: 'block', marginBottom: '4px' }}
-                  >
-                    {msg.role === 'user' ? `You (${simUserName})` : 'System'}
-                  </strong>
-                  <span style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</span>
-                </div>
-              )}
-            </div>
-          )
-        })}
+        {simHistory.map((msg, i) => (
+          <ChatBubble key={`${msg.role}-${i}`} msg={msg} userName={simUserName} />
+        ))}
         {simIsLoading && (
           <div
             style={{ alignSelf: 'flex-start', background: '#fff', padding: '10px 14px', borderRadius: '8px' }}
@@ -434,19 +336,13 @@ Neeche diye button par click karein aur 2 minute mein process poora karein. 👇
         )}
       </div>
 
-      <form onSubmit={sendSimMessage} className="row gap-sm">
-        <input
-          type="text"
-          value={simMessage}
-          onChange={e => setSimMessage(e.target.value)}
-          placeholder={`Type a message as ${simUserName}...`}
-          style={{ flex: 1 }}
-          disabled={simIsLoading}
-        />
-        <button type="submit" disabled={simIsLoading || !simMessage.trim()}>
-          Send
-        </button>
-      </form>
+      <MessageInput
+        message={simMessage}
+        onChange={setSimMessage}
+        onSend={() => sendSimMessage(new Event('submit') as unknown as FormEvent)}
+        disabled={simIsLoading}
+        placeholder={`Type a message as ${simUserName}...`}
+      />
     </section>
   )
 }

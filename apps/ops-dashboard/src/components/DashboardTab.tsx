@@ -18,6 +18,7 @@ interface DashboardTabProps {
   fakeOverrideStatus: (userId: string, newStatus: string) => void
   csvUsers: CsvUser[]
   csvUploadSlot?: ReactNode
+  onUserSelect?: (user: CsvUser) => void
 }
 
 export function DashboardTab({
@@ -30,7 +31,8 @@ export function DashboardTab({
   onMarkCalled,
   fakeOverrideStatus,
   csvUsers,
-  csvUploadSlot
+  csvUploadSlot,
+  onUserSelect
 }: DashboardTabProps) {
   const callQueue = pendingTasks.filter(t => t.callPriority && t.callPriority !== 'none')
   const [expandedScript, setExpandedScript] = useState<string | null>(null)
@@ -38,12 +40,18 @@ export function DashboardTab({
   return (
     <>
       <section className="grid">
-        {Object.entries(metrics).map(([label, value]) => (
-          <article className="card" key={label}>
-            <p className="muted capitalize">{label}</p>
-            <h2>{value}</h2>
-          </article>
-        ))}
+        {Object.entries(metrics).map(([label, value]) => {
+          let displayValue = value as React.ReactNode
+          if ((label === 'windowStart' || label === 'windowEnd') && typeof value === 'string') {
+            displayValue = `${new Date(value).toLocaleDateString()} ${new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+          }
+          return (
+            <article className="card" key={label}>
+              <p className="muted capitalize">{label}</p>
+              <h2 style={label.startsWith('window') ? { fontSize: '1.2rem' } : undefined}>{displayValue}</h2>
+            </article>
+          )
+        })}
       </section>
 
       {csvUploadSlot && (
@@ -279,7 +287,22 @@ export function DashboardTab({
             </thead>
             <tbody>
               {csvUsers.map(user => (
-                <tr key={user.id} style={{ borderBottom: '1px solid #eee' }}>
+                <tr
+                  key={user.id}
+                  style={{
+                    borderBottom: '1px solid #eee',
+                    cursor: onUserSelect ? 'pointer' : 'default'
+                  }}
+                  onClick={() => onUserSelect?.(user)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      onUserSelect?.(user)
+                    }
+                  }}
+                  tabIndex={onUserSelect ? 0 : undefined}
+                  className={onUserSelect ? 'hover-row' : ''}
+                >
                   <td style={{ padding: '8px' }}>{user.name}</td>
                   <td style={{ padding: '8px' }}>
                     <code>{user.customerId}</code>

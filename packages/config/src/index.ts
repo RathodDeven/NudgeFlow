@@ -5,7 +5,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(3000),
   TZ: z.string().default('Asia/Kolkata'),
   DATABASE_URL: z.string().min(1),
-  REDIS_URL: z.string().min(1),
+  REDIS_URL: z.string().nullish(),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL_ROUTINE: z.string().default('gpt-5-mini'),
   OPENAI_MODEL_COMPLEX: z.string().default('gpt-5.1'),

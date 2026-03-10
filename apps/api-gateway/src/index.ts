@@ -1,5 +1,5 @@
 import { loadEnv } from '@nudges/config'
-import { ensureTenant, getPool, getUserById, insertUsers, listUsers, updateUserStage } from '@nudges/db'
+import { ensureSession, ensureTenant, getPool, getUserById, getUserMessages, getUserSessionInfo, insertUsers, listUsers, saveMessage, updateAgentActive, updateUserStage } from '@nudges/db'
 import { handoffRequestSchema, ingestExcelRequestSchema, metricsResponseSchema } from '@nudges/domain'
 import { loadKnowledgeSet } from '@nudges/knowledge-runtime'
 import { deriveFunnelMetrics } from '@nudges/observability'
@@ -52,7 +52,9 @@ app.get('/auth/me', { preHandler: protectedHandler }, async request => {
 app.post('/ingestion/excel', async (request, reply) => {
   const payload = ingestExcelRequestSchema.safeParse(request.body)
   if (!payload.success) {
-    return reply.status(400).send({ error: payload.error.flatten() })
+    const errorBody = payload.error.flatten()
+    app.log.error({ msg: 'Ingestion payload validation failed', error: errorBody })
+    return reply.status(400).send({ error: errorBody })
   }
 
   eventLogger.log({
@@ -91,7 +93,9 @@ app.post('/status-sync/poll', async request => {
 app.post('/sessions/:id/handoff', { preHandler: protectedHandler }, async (request, reply) => {
   const parsed = handoffRequestSchema.safeParse(request.body)
   if (!parsed.success) {
-    return reply.status(400).send({ error: parsed.error.flatten() })
+    const errorBody = parsed.error.flatten()
+    app.log.error({ msg: 'Handoff payload validation failed', error: errorBody })
+    return reply.status(400).send({ error: errorBody })
   }
 
   const sessionId = (request.params as { id: string }).id
@@ -110,7 +114,9 @@ app.post('/sessions/:id/handoff', { preHandler: protectedHandler }, async (reque
 app.post('/sessions/:id/resume', { preHandler: protectedHandler }, async (request, reply) => {
   const parsed = handoffRequestSchema.safeParse(request.body)
   if (!parsed.success) {
-    return reply.status(400).send({ error: parsed.error.flatten() })
+    const errorBody = parsed.error.flatten()
+    app.log.error({ msg: 'Resume payload validation failed', error: errorBody })
+    return reply.status(400).send({ error: errorBody })
   }
 
   const sessionId = (request.params as { id: string }).id
@@ -234,6 +240,24 @@ app.get('/users/:id', { preHandler: protectedHandler }, async (request, reply) =
   return { user }
 })
 
+app.get('/users/:id/messages', { preHandler: protectedHandler }, async (request, reply) => {
+  const userId = (request.params as { id: string }).id
+  const messages = await getUserMessages(dbPool, userId)
+  return { messages }
+})
+
+app.post('/users/:id/messages', { preHandler: protectedHandler }, async (request, reply) => {
+  const userId = (request.params as { id: string }).id
+  const body = request.body as { direction: 'inbound' | 'outbound' | 'system'; body: string; channel?: string }
+  if (!body?.direction || !body?.body) {
+    return reply.status(400).send({ error: 'direction and body are required' })
+  }
+  const tid = await getTenantId()
+  const sessionId = await ensureSession(dbPool, userId, tid)
+  await saveMessage(dbPool, sessionId, body.direction, body.body, body.channel || 'whatsapp')
+  return { ok: true }
+})
+
 app.patch('/users/:id/stage', { preHandler: protectedHandler }, async (request, reply) => {
   const userId = (request.params as { id: string }).id
   const body = request.body as { stage?: string }
@@ -253,6 +277,81 @@ app.patch('/users/:id/stage', { preHandler: protectedHandler }, async (request, 
   })
 
   return { ok: true, userId, stage: body.stage }
+})
+
+app.get('/users/:id/session', { preHandler: protectedHandler }, async (request, reply) => {
+  const userId = (request.params as { id: string }).id
+  const tid = await getTenantId()
+  const session = await getUserSessionInfo(dbPool, userId, tid)
+  if (!session) {
+    return { ok: true, isAgentActive: true } // Default true if no session yet
+  }
+  return { ok: true, isAgentActive: session.isAgentActive }
+})
+
+app.patch('/users/:id/agent-active', { preHandler: protectedHandler }, async (request, reply) => {
+  const userId = (request.params as { id: string }).id
+  const body = request.body as { isAgentActive?: boolean }
+  if (typeof body?.isAgentActive !== 'boolean') {
+    return reply.status(400).send({ error: 'isAgentActive boolean is required' })
+  }
+
+  const tid = await getTenantId()
+  const sessionId = await ensureSession(dbPool, userId, tid)
+  await updateAgentActive(dbPool, sessionId, body.isAgentActive)
+
+  eventLogger.log({
+    event: 'agent_active_toggled',
+    level: 'info',
+    payload: { userId, isAgentActive: body.isAgentActive }
+  })
+
+  return { ok: true, isAgentActive: body.isAgentActive }
+})
+
+app.post('/users/:id/send-whatsapp', { preHandler: protectedHandler }, async (request, reply) => {
+  const userId = (request.params as { id: string }).id
+  const body = request.body as { message: string }
+  if (!body?.message) {
+    return reply.status(400).send({ error: 'message is required' })
+  }
+
+  const user = await getUserById(dbPool, userId)
+  if (!user) {
+    return reply.status(404).send({ error: 'user_not_found' })
+  }
+
+  const tid = await getTenantId()
+  const sessionId = await ensureSession(dbPool, userId, tid)
+
+  // 1. Send via local channel-whatsapp service
+  const res = await fetch('http://localhost:3040/whatsapp/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      recipientE164: user.phoneE164,
+      body: body.message,
+      type: 'text'
+    })
+  })
+
+  if (!res.ok) {
+    const err = await res.text()
+    return reply.status(500).send({ error: 'whatsapp_send_failed', details: err })
+  }
+
+  const gupshupRes = await res.json()
+
+  // 2. Save to DB
+  await saveMessage(dbPool, sessionId, 'outbound', body.message, 'whatsapp')
+
+  eventLogger.log({
+    event: 'manual_whatsapp_sent',
+    level: 'info',
+    payload: { userId, providerId: gupshupRes.providerMessageId }
+  })
+
+  return { ok: true, providerMessageId: gupshupRes.providerMessageId }
 })
 
 app

@@ -48,6 +48,15 @@ export type InsertUserRow = {
   state?: string
 }
 
+export type ChatMessage = {
+  id: string
+  sessionId: string
+  channel: string
+  direction: 'inbound' | 'outbound' | 'system'
+  body: string
+  createdAt: string
+}
+
 // --- Tenant ---
 
 export const ensureTenant = async (pool: pg.Pool, tenantKey: string): Promise<string> => {
@@ -168,6 +177,90 @@ export const updateUserStage = async (pool: pg.Pool, userId: string, newStage: s
     `UPDATE loan_cases SET current_stage = $1, updated_at = NOW()
      WHERE user_id = $2`,
     [newStage, userId]
+  )
+  return (result.rowCount ?? 0) > 0
+}
+
+// --- Chat History ---
+
+export const ensureSession = async (pool: pg.Pool, userId: string, tenantId: string): Promise<string> => {
+  const result = await pool.query(
+    'SELECT id FROM conversation_sessions WHERE tenant_id = $1 AND user_id = $2 ORDER BY created_at DESC LIMIT 1',
+    [tenantId, userId]
+  )
+  if (result.rows.length > 0) return result.rows[0].id as string
+
+  const caseResult = await pool.query(
+    'SELECT id FROM loan_cases WHERE tenant_id = $1 AND user_id = $2 ORDER BY updated_at DESC LIMIT 1',
+    [tenantId, userId]
+  )
+  if (caseResult.rows.length === 0) throw new Error('No loan case found for user')
+
+  const loanCaseId = caseResult.rows[0].id as string
+  const sessionId = crypto.randomUUID()
+
+  await pool.query(
+    `INSERT INTO conversation_sessions (id, tenant_id, user_id, loan_case_id, summary_state)
+     VALUES ($1, $2, $3, $4, '{}'::jsonb)`,
+    [sessionId, tenantId, userId, loanCaseId]
+  )
+  return sessionId
+}
+
+export const saveMessage = async (
+  pool: pg.Pool,
+  sessionId: string,
+  direction: 'inbound' | 'outbound' | 'system',
+  body: string,
+  channel = 'whatsapp'
+): Promise<void> => {
+  const id = crypto.randomUUID()
+  await pool.query(
+    `INSERT INTO message_events (id, session_id, channel, direction, body)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [id, sessionId, channel, direction, body]
+  )
+}
+
+export const getUserMessages = async (pool: pg.Pool, userId: string): Promise<ChatMessage[]> => {
+  const result = await pool.query(
+    `SELECT me.id, me.session_id AS "sessionId", me.channel, me.direction, me.body, me.created_at AS "createdAt"
+     FROM message_events me
+     JOIN conversation_sessions cs ON me.session_id = cs.id
+     WHERE cs.user_id = $1
+     ORDER BY me.created_at ASC`,
+    [userId]
+  )
+  return result.rows as ChatMessage[]
+}
+
+export type UserSessionInfo = {
+  sessionId: string
+  isAgentActive: boolean
+}
+
+export const getUserSessionInfo = async (
+  pool: pg.Pool,
+  userId: string,
+  tenantId: string
+): Promise<UserSessionInfo | null> => {
+  const result = await pool.query(
+    `SELECT id AS "sessionId", is_agent_active AS "isAgentActive"
+     FROM conversation_sessions
+     WHERE tenant_id = $1 AND user_id = $2
+     ORDER BY created_at DESC LIMIT 1`,
+    [tenantId, userId]
+  )
+  if (result.rows.length === 0) return null
+  return result.rows[0] as UserSessionInfo
+}
+
+export const updateAgentActive = async (pool: pg.Pool, sessionId: string, isAgentActive: boolean): Promise<boolean> => {
+  const result = await pool.query(
+    `UPDATE conversation_sessions
+     SET is_agent_active = $1, updated_at = NOW()
+     WHERE id = $2`,
+    [isAgentActive, sessionId]
   )
   return (result.rowCount ?? 0) > 0
 }

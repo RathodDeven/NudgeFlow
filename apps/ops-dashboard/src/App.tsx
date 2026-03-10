@@ -4,6 +4,7 @@ import { CsvUpload } from './components/CsvUpload'
 import { DashboardTab } from './components/DashboardTab'
 import { Login } from './components/Login'
 import { SimulatorTab } from './components/SimulatorTab'
+import { UserDetailView } from './components/UserDetailView'
 import type { CsvUser, EventItem, FunnelMetrics, PendingHITLTask, SessionItem } from './types'
 
 export function App() {
@@ -17,6 +18,7 @@ export function App() {
   const [csvUsers, setCsvUsers] = useState<CsvUser[]>([])
   const [dataError, setDataError] = useState<string>('')
   const [currentTab, setCurrentTab] = useState<'dashboard' | 'simulator'>('dashboard')
+  const [selectedUser, setSelectedUser] = useState<CsvUser | null>(null)
 
   const isAuthenticated = useMemo(() => Boolean(token), [token])
 
@@ -101,6 +103,7 @@ export function App() {
     setEvents([])
     setPendingTasks([])
     setCsvUsers([])
+    setSelectedUser(null)
   }
 
   const handleApprove = (taskId: string) => {
@@ -122,6 +125,10 @@ export function App() {
   }
 
   const fakeOverrideStatus = (userId: string, newStatus: string) => {
+    setCsvUsers(prev => prev.map(u => u.customerId === userId || u.id === userId ? { ...u, status: newStatus.toUpperCase() } : u))
+    if (selectedUser && (selectedUser.id === userId || selectedUser.customerId === userId)) {
+      setSelectedUser({ ...selectedUser, status: newStatus.toUpperCase() })
+    }
     setDataError(`Status for ${userId} manually overridden to ${newStatus}.`)
     setTimeout(() => setDataError(''), 3000)
   }
@@ -153,15 +160,21 @@ export function App() {
           <div className="row gap-sm">
             <button
               type="button"
-              className={currentTab === 'dashboard' ? '' : 'secondary'}
-              onClick={() => setCurrentTab('dashboard')}
+              className={currentTab === 'dashboard' && !selectedUser ? '' : 'secondary'}
+              onClick={() => {
+                setCurrentTab('dashboard')
+                setSelectedUser(null)
+              }}
             >
               Dashboard
             </button>
             <button
               type="button"
-              className={currentTab === 'simulator' ? '' : 'secondary'}
-              onClick={() => setCurrentTab('simulator')}
+              className={currentTab === 'simulator' && !selectedUser ? '' : 'secondary'}
+              onClick={() => {
+                setCurrentTab('simulator')
+                setSelectedUser(null)
+              }}
             >
               Sandbox Simulator
             </button>
@@ -185,7 +198,18 @@ export function App() {
 
         {dataError ? <p className="error">{dataError}</p> : null}
 
-        {currentTab === 'dashboard' ? (
+        {selectedUser ? (
+          <UserDetailView
+            user={selectedUser}
+            token={token ?? ''}
+            onClose={() => setSelectedUser(null)}
+            onStatusChange={fakeOverrideStatus}
+            isSandbox={process.env.NODE_ENV !== 'production'}
+            pendingTasks={pendingTasks}
+            onApprove={handleApprove}
+            onReject={handleReject}
+          />
+        ) : currentTab === 'dashboard' ? (
           <DashboardTab
             metrics={metrics}
             sessions={sessions}
@@ -205,6 +229,7 @@ export function App() {
               ) : null
             }
             csvUsers={csvUsers}
+            onUserSelect={user => setSelectedUser(user)}
           />
         ) : (
           <SimulatorTab users={csvUsers} />

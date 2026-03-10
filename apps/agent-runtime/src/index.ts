@@ -132,7 +132,9 @@ app.get('/health', async () => ({
 app.post('/agent/respond', async (request, reply) => {
   const parsed = generateReplyInputSchema.safeParse(request.body)
   if (!parsed.success) {
-    return reply.status(400).send({ error: parsed.error.flatten() })
+    const errorBody = parsed.error.flatten()
+    app.log.error({ msg: 'Agent Runtime payload validation failed', error: errorBody, body: request.body })
+    return reply.status(400).send({ error: errorBody })
   }
 
   const { session, lastInboundMessage, trigger } = parsed.data
@@ -176,12 +178,10 @@ app.post('/agent/respond', async (request, reply) => {
         .describe('The entire payload to issue to the user.')
     })
 
-    const responseFormat = zodToJsonSchema(responseSchema, 'AgentResponse')
-
     const response = await generateStructuredWithOpenAI({
       apiKey: env.OPENAI_API_KEY,
       model: usedModel,
-      schema: responseFormat as unknown as Record<string, unknown>,
+      schema: responseSchema,
       schemaName: 'AgentResponse',
       systemPrompt: buildSystemPrompt('support'), // Use general support/recovery prompt
       userPrompt: [

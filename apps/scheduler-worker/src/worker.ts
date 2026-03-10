@@ -3,7 +3,7 @@ import { enforceMessagingPolicy } from '@nudges/safety-compliance'
 import { type ConnectionOptions, Queue, Worker } from 'bullmq'
 
 const env = loadEnv()
-const redisUrl = new URL(env.REDIS_URL)
+const redisUrl = new URL(env.REDIS_URL || 'redis://localhost:6379')
 
 const connection: ConnectionOptions = {
   host: redisUrl.hostname,
