@@ -88,10 +88,11 @@ To **add a new company**, create `tenants/<id>/` with the three required markdow
 9. **Database Changes**: Always follow the migration rule in the "Database Management & Migrations" section above.
 
 ## Agent Architecture & User Flow
-- **User Flow**: Inbound request → `/agent/respond` → Intent Classification → Safety/Escalation check → Skill & Prompt Assembly (with tenant SOUL + knowledge) → LLM Generation → Outbound Guardrail.
+- **Inbound Webhook Flow**: User replies on WhatsApp → `apps/api-gateway` (`/webhooks/whatsapp/gupshup`) parses Gupshup body → Maps phone number to `loanCaseId` via DB → Saves inbound message to `message_events` → POSTs chat history to `apps/agent-runtime` (`/agent/respond`).
+- **Agent Generation Flow**: `/agent/respond` → Intent Classification → Checks chat history context → Skill & Prompt Assembly (with tenant SOUL + knowledge) → LLM Generation → Outbound Guardrail.
 - **Prompt Assembly**: Tenant `SOUL.md` is the persona; framework skills (supervisor, specialist, compliance) provide structural behavior; `knowledge-base.md` and `channel-rules.md` provide business context and output format constraints.
 - **Session Management**: `packages/session-memory/src/index.ts`. Sessions are compacted when tokens exceed limits, extracting `commitments` and `userObjections` to profile users across turns.
-- **Payload**: The LLM natively dictates the final deeply-linked URL and CTA string as part of its strictly formulated `whatsappPayload` JSON response block.
+- **Payload & Dispatch**: The LLM natively dictates the final deeply-linked URL and CTA string as part of its strictly formulated `whatsappPayload` JSON block. `api-gateway` saves this response to DB and dispatches it immediately via `apps/channel-whatsapp`.
 
 ## Context Update Rule (Required)
 When adding or changing any of the following, update context in the same PR/change set:

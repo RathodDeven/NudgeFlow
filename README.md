@@ -114,11 +114,11 @@ TENANT_ID=clickpe            # loads from tenants/clickpe/
 # 2. Start the agent runtime only
 pnpm dev --filter=@apps/agent-runtime
 
-# 3. Start the Ops Dashboard (includes Chat Simulator tab)
+# 3. Start the Ops Dashboard (Ensure VITE_ENABLE_SANDBOX=true in .env)
 pnpm dev --filter=@apps/ops-dashboard
 ```
 
-Open the **Ops Dashboard → Simulator tab** at `http://localhost:3050`. You can:
+Open the **Ops Dashboard** at `http://localhost:3050`. Because you have `VITE_ENABLE_SANDBOX=true`, you will see a 🧪 Sandbox Simulator UI appearing inside the user detail view. You can:
 - Type messages as a user and see Neha's responses in real-time
 - Trigger proactive nudges to see the WhatsApp-formatted message with CTA button
 - Change the user's loan stage and mobile number to test different scenarios
@@ -155,6 +155,7 @@ These are the only vars you need to run and test locally:
 | Variable | Value | Notes |
 |---|---|---|
 | `NODE_ENV` | `development` | |
+| `VITE_ENABLE_SANDBOX` | `true` | Shows Sandbox simulator UI in Dashboard |
 | `PORT` | `3000` | API gateway port |
 | `TZ` | `Asia/Kolkata` | Timezone for outreach window checks |
 | `DATABASE_URL` | `postgres://user:pass@host/db?sslmode=require` | Neon DB (Sandbox/Dev) |
@@ -228,7 +229,7 @@ Both Redis and n8n are included for future scalability (e.g., real-time updates 
 |---|---|---|
 | **Daily batch nudge** | Cron (9 AM IST) | Loop through all `FRESH_LOAN` users, call `agent-runtime` for each, send WhatsApp via `channel-whatsapp` |
 | **Scheduled follow-ups** | Timer per user | Auto-retry users who didn't respond within 24h |
-| **WhatsApp webhook relay** | Gupshup webhook | Receive inbound WhatsApp → forward to `agent-runtime` → auto-reply |
+| **WhatsApp webhook relay** | *(Natively Implemented)* | Receive inbound WhatsApp on `/webhooks/whatsapp/gupshup` → save to DB → forward to `agent-runtime` → auto-reply |
 | **Ops alerts** | Event-driven | Slack/email notification when a P1 call escalation is created |
 | **CSV ingestion** | File upload trigger | Watch a folder/S3 bucket for new CSVs → auto-import to DB |
 
