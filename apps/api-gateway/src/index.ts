@@ -1,5 +1,6 @@
+import { type InboundWebhook, parseInboundWebhook } from '@nudges/channel-gupshup'
 import { loadEnv } from '@nudges/config'
-import { ensureSession, ensureTenant, getPool, getUserById, getUserMessages, getUserSessionInfo, insertUsers, listUsers, saveMessage, updateAgentActive, updateUserStage } from '@nudges/db'
+import { ensureSession, ensureTenant, getPool, getUserById, getUserByPhoneE164, getUserMessages, getUserSessionInfo, insertUsers, listUsers, saveMessage, updateAgentActive, updateUserStage } from '@nudges/db'
 import { handoffRequestSchema, ingestExcelRequestSchema, metricsResponseSchema } from '@nudges/domain'
 import { loadKnowledgeSet } from '@nudges/knowledge-runtime'
 import { deriveFunnelMetrics } from '@nudges/observability'
@@ -82,11 +83,97 @@ app.post('/ingestion/excel', async (request, reply) => {
 })
 
 app.post('/webhooks/whatsapp/gupshup', async request => {
+  const payload = request.body as InboundWebhook
+  if (payload?.type !== 'message') {
+    return { ok: true }
+  }
+
+  const parsed = parseInboundWebhook(payload)
+  const tid = await getTenantId()
+  const user = await getUserByPhoneE164(dbPool, tid, parsed.phone)
+
+  if (!user) {
+    app.log.warn({ msg: 'Inbound message from unknown user', phone: parsed.phone })
+    return { ok: true }
+  }
+
+  const sessionId = await ensureSession(dbPool, user.id, tid)
+  const sessionInfo = await getUserSessionInfo(dbPool, user.id, tid)
+  await saveMessage(dbPool, sessionId, 'inbound', parsed.text, 'whatsapp')
+
   eventLogger.log({
     event: 'message_inbound_received',
     level: 'info',
-    payload: { body: request.body as Record<string, unknown> }
+    payload: { userId: user.id, body: parsed.text }
   })
+
+  // End immediately so webhook returns HTTP 200 within limits
+  // Process the agent request async
+  void (async () => {
+    try {
+      if (sessionInfo && !sessionInfo.isAgentActive) {
+        app.log.info({ msg: 'Agent disabled, skipping auto-response', userId: user.id })
+        return
+      }
+
+      const messages = await getUserMessages(dbPool, user.id)
+      const nowStr = new Date().toISOString()
+      
+      const agentRes = await fetch('http://localhost:3010/agent/respond', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session: {
+            id: sessionId,
+            tenantId: tid,
+            userId: user.id,
+            loanCaseId: user.loanCaseId ?? crypto.randomUUID(),
+            isAgentActive: true,
+            channel: 'whatsapp',
+            summaryState: {
+              sessionIntent: 'recovery',
+              userObjections: [],
+              stageContext: user.currentStage ?? 'fresh_loan',
+              persuasionPath: 'default',
+              commitments: [],
+              nextAction: 'continue',
+              preferredLanguage: 'hinglish'
+            },
+            compactFacts: {
+              mobile_number: user.phoneE164,
+              user_name: user.fullName ?? 'Unknown'
+            },
+            messageCount: messages.length,
+            tokenEstimate: 0,
+            createdAt: nowStr,
+            updatedAt: nowStr
+          },
+          lastInboundMessage: messages[messages.length - 1],
+          chatHistory: messages,
+          trigger: 'inbound_reply'
+        })
+      })
+
+      if (!agentRes.ok) {
+        throw new Error(`Agent API failed: ${await agentRes.text()}`)
+      }
+
+      const agentData = await agentRes.json()
+      await saveMessage(dbPool, sessionId, 'outbound', agentData.body, 'whatsapp')
+
+      await fetch('http://localhost:3040/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          toPhoneE164: user.phoneE164,
+          body: agentData.body
+        })
+      })
+    } catch (err) {
+      app.log.error({ msg: 'Agent routing failed', error: err })
+    }
+  })()
 
   return { ok: true }
 })
@@ -339,9 +426,9 @@ app.post('/users/:id/send-whatsapp', { preHandler: protectedHandler }, async (re
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      recipientE164: user.phoneE164,
-      body: body.message,
-      type: 'text'
+      sessionId: sessionId,
+      toPhoneE164: user.phoneE164,
+      body: body.message
     })
   })
 

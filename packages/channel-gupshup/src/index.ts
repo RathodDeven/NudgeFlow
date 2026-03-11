@@ -6,16 +6,34 @@ export type GupshupClientConfig = {
   baseUrl: string
 }
 
-export const toTemplatePayload = (request: SendMessageRequest) => ({
-  channel: 'whatsapp',
-  source: 'NudgeFlow',
-  destination: request.toPhoneE164,
-  message: {
-    type: 'text',
-    text: request.body
-  },
-  src: 'nudgeflow-mvp'
-})
+export const toTemplatePayload = (request: SendMessageRequest) => {
+  if (request.templateName) {
+    return {
+      channel: 'whatsapp',
+      source: 'NudgeFlow',
+      destination: request.toPhoneE164,
+      message: {
+        type: 'template',
+        template: {
+          id: request.templateName,
+          params: request.variables ? Object.values(request.variables) : []
+        }
+      },
+      src: 'nudgeflow-mvp'
+    }
+  }
+
+  return {
+    channel: 'whatsapp',
+    source: 'NudgeFlow',
+    destination: request.toPhoneE164,
+    message: {
+      type: 'text',
+      text: request.body
+    },
+    src: 'nudgeflow-mvp'
+  }
+}
 
 export const sendWhatsAppMessage = async (
   config: GupshupClientConfig,

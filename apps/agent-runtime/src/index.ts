@@ -61,8 +61,7 @@ const soulContent = await readTenantFile('SOUL.md')
 const staticKnowledgeBase = await readTenantFile('knowledge-base.md')
 
 const channelRulesContent = await readTenantFile('channel-rules.md')
-const callPlaybookContent = await readTenantFile('call-playbook.md')
-const dailyOpsContent = await readTenantFile('daily-ops.md')
+// NOTE: call-playbook.md and daily-ops.md are not loaded from the tenant folder as they are only meant for ops team documentation, not LLM context injection.
 
 if (!channelRulesContent) {
   throw new Error(`[agent-runtime] Critical: No channel rules found or loaded for ${TENANT_ID}`)
@@ -113,7 +112,7 @@ const buildSystemPrompt = (route: string): string => {
       : '',
     `--- KNOWLEDGE BASE ---\n${staticKnowledgeBase}\n--- END KNOWLEDGE BASE ---`,
     `--- CHANNEL RULES ---\n${channelRulesContent}\n--- END CHANNEL RULES ---`,
-    'Hard constraints: keep response body under 450 chars, informational only, one CTA button maximum, no fabricated claims.'
+    'Hard constraints: keep response body under 400 chars, informational only, one CTA button maximum, no fabricated claims.'
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -203,14 +202,17 @@ app.post('/agent/respond', async (request, reply) => {
       'Task: Analyze the Chat History above so you do not repeat yourself. Address any specific questions the user asks. Then classify intent, review compliance, and generate a contextual response payload adhering to channel rules.'
     ].join('\n')
 
-    app.log.info({ msg: `=== Dispatching AI Prompt ===\n${renderedUserPrompt}\n=============================` })
+    const systemPrompt = buildSystemPrompt('recovery'); // Use general support/recovery prompt
+
+    app.log.info({ msg: `=== Dispatching AI Prompt (System) ===\n${systemPrompt}\n=============================` })
+    app.log.info({ msg: `=== Dispatching AI Prompt (User) ===\n${renderedUserPrompt}\n=============================` })
 
     const response = await generateStructuredWithOpenAI({
       apiKey: env.OPENAI_API_KEY,
       model: usedModel,
       schema: responseSchema,
       schemaName: 'AgentResponse',
-      systemPrompt: buildSystemPrompt('support'), // Use general support/recovery prompt
+      systemPrompt,
       userPrompt: renderedUserPrompt
     })
     const timeOpenAI = Date.now() - startTimeOpenAI

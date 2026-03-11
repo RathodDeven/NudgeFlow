@@ -171,8 +171,8 @@ Only needed when connecting to live APIs:
 | Variable | Service | Notes |
 |---|---|---|
 | `OPENAI_API_KEY` | OpenAI | Required for real LLM-generated replies. Without it, deterministic fallback messages are used. |
-| `OPENAI_MODEL_ROUTINE` | OpenAI | Default `gpt-5-mini` (everyday messages) |
-| `OPENAI_MODEL_COMPLEX` | OpenAI | Default `gpt-5.1` (complaints, escalations) |
+| `OPENAI_MODEL_ROUTINE` | OpenAI | Default `gpt-5-nano-2025-08-07` (everyday messages) |
+| `OPENAI_MODEL_COMPLEX` | OpenAI | Default `gpt-5-mini-2025-08-07` (complaints, escalations) |
 | `SARVAM_API_KEY` | Sarvam AI | Required for real language detection. Without it, heuristic regex is used. |
 | `SARVAM_BASE_URL` | Sarvam AI | Default `https://api.sarvam.ai` |
 | `GUPSHUP_API_KEY` | Gupshup | Required to send real WhatsApp messages |

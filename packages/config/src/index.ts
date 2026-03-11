@@ -2,13 +2,14 @@ import { z } from 'zod'
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  VITE_ENABLE_SANDBOX: z.coerce.boolean().default(true),
   PORT: z.coerce.number().default(3000),
   TZ: z.string().default('Asia/Kolkata'),
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().nullish(),
   OPENAI_API_KEY: z.string().optional(),
-  OPENAI_MODEL_ROUTINE: z.string().default('gpt-5-mini'),
-  OPENAI_MODEL_COMPLEX: z.string().default('gpt-5.1'),
+  OPENAI_MODEL_ROUTINE: z.string().default('gpt-5-nano-2025-08-07'),
+  OPENAI_MODEL_COMPLEX: z.string().default('gpt-5-mini-2025-08-07'),
   SARVAM_API_KEY: z.string().optional(),
   SARVAM_BASE_URL: z.string().default('https://api.sarvam.ai'),
   GUPSHUP_API_KEY: z.string().optional(),

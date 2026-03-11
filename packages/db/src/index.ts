@@ -172,6 +172,23 @@ export const getUserById = async (pool: pg.Pool, userId: string): Promise<DbUser
   return (result.rows[0] as DbUser) ?? null
 }
 
+export const getUserByPhoneE164 = async (pool: pg.Pool, tenantId: string, phoneE164: string): Promise<DbUser | null> => {
+  const result = await pool.query(
+    `SELECT
+       up.id, up.tenant_id AS "tenantId", up.external_user_id AS "externalUserId",
+       up.full_name AS "fullName", up.phone_e164 AS "phoneE164",
+       up.locale_hint AS "localeHint", up.city, up.state,
+       up.consent_provided AS "consentProvided", up.created_at AS "createdAt",
+       lc.current_stage AS "currentStage", lc.partner_case_id AS "partnerCaseId",
+       lc.id AS "loanCaseId", lc.loan_amount AS "loanAmount", lc.firm_name AS "firmName"
+     FROM user_profiles up
+     LEFT JOIN loan_cases lc ON lc.user_id = up.id AND lc.tenant_id = up.tenant_id
+     WHERE up.tenant_id = $1 AND up.phone_e164 = $2`,
+    [tenantId, phoneE164]
+  )
+  return (result.rows[0] as DbUser) ?? null
+}
+
 export const updateUserStage = async (pool: pg.Pool, userId: string, newStage: string): Promise<boolean> => {
   const result = await pool.query(
     `UPDATE loan_cases SET current_stage = $1, updated_at = NOW()

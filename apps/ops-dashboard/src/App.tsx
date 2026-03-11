@@ -3,7 +3,6 @@ import { authFetch, initialMetrics, tokenKey } from './api/client'
 import { CsvUpload } from './components/CsvUpload'
 import { DashboardTab } from './components/DashboardTab'
 import { Login } from './components/Login'
-import { SimulatorTab } from './components/SimulatorTab'
 import { UserDetailView } from './components/UserDetailView'
 import type { CsvUser, EventItem, FunnelMetrics, PendingHITLTask, SessionItem } from './types'
 
@@ -17,7 +16,6 @@ export function App() {
   const [pendingTasks, setPendingTasks] = useState<PendingHITLTask[]>([])
   const [csvUsers, setCsvUsers] = useState<CsvUser[]>([])
   const [dataError, setDataError] = useState<string>('')
-  const [currentTab, setCurrentTab] = useState<'dashboard' | 'simulator'>('dashboard')
   const [selectedUser, setSelectedUser] = useState<CsvUser | null>(null)
 
   const isAuthenticated = useMemo(() => Boolean(token), [token])
@@ -160,23 +158,12 @@ export function App() {
           <div className="row gap-sm">
             <button
               type="button"
-              className={currentTab === 'dashboard' && !selectedUser ? '' : 'secondary'}
+              className={!selectedUser ? '' : 'secondary'}
               onClick={() => {
-                setCurrentTab('dashboard')
                 setSelectedUser(null)
               }}
             >
               Dashboard
-            </button>
-            <button
-              type="button"
-              className={currentTab === 'simulator' && !selectedUser ? '' : 'secondary'}
-              onClick={() => {
-                setCurrentTab('simulator')
-                setSelectedUser(null)
-              }}
-            >
-              Sandbox Simulator
             </button>
 
             <div style={{ width: '1px', background: '#ccc', margin: '0 8px' }} />
@@ -204,12 +191,11 @@ export function App() {
             token={token ?? ''}
             onClose={() => setSelectedUser(null)}
             onStatusChange={fakeOverrideStatus}
-            isSandbox={process.env.NODE_ENV !== 'production'}
             pendingTasks={pendingTasks}
             onApprove={handleApprove}
             onReject={handleReject}
           />
-        ) : currentTab === 'dashboard' ? (
+        ) : (
           <DashboardTab
             metrics={metrics}
             sessions={sessions}
@@ -231,8 +217,6 @@ export function App() {
             csvUsers={csvUsers}
             onUserSelect={user => setSelectedUser(user)}
           />
-        ) : (
-          <SimulatorTab users={csvUsers} />
         )}
       </main>
     </div>

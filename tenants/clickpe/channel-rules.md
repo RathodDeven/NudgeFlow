@@ -8,18 +8,17 @@ description: WhatsApp channel configuration for ClickPe — CTA layout, deep lin
 The system must use these exact pre-approved Meta templates when initiating contact outside the 24-hour customer service window.
 
 ### Template: Initial Outreach (Fresh Loan)
-- **Template Name:** `clickpe_fresh_loan_nudge`
+- **Gupshup Template ID:** `567063dd-09e1-46f1-92a8-dd7f94bea415`
+- **Template Name:** `clickpe_loan_recovery_v1`
 - **Category:** Utility
-- **Language:** English
-- **Body Text:** "Hi {{1}} 🌟\n\nMain {{2}} bol rahi hoon {{3}} se! Aapka Rs. {{4}} ka loan offer completely approved hai 🎉\n\nBas ek aakhri choti si step baaki hai: Please verify your {{5}} so we can process your disbursal quickly 💸\n\nNiche diye gaye link par click karein aur apna application 2 minute mein poora karein 👇"
+- **Language:** Hinglish
+- **Body Text:** "Namaste {{1}}! 🙏\n\nAapka ₹{{2}} ka business loan offer expire hone wala hai. ⏳\n\nSirf 1 aakhri step bacha hai: Please upload your {{3}}.\n\nAapne pehle hi process start kar diya hai, ise miss mat kijiye. Ye funds aapke business growth ke liye block kiye gaye hain.\n\nNeeche diye button par click karein aur 2 minute mein process poora karein. 👇"
 - **Variable Mapping:**
   - `{{1}}`: Applicant's First Name
-  - `{{2}}`: Agent Name (e.g. "Neha")
-  - `{{3}}`: Company Name (e.g. "ClickPe")
-  - `{{4}}`: Loan Amount
-  - `{{5}}`: Exact pending documents or steps (e.g. "Udyam and Electricity Bill")
+  - `{{2}}`: Loan Amount
+  - `{{3}}`: Exact pending document/step
 - **Buttons (Strict Order):**
-  1. URL Button: `Claim Reserved Funds 🚀` (URL suffix variable: `{{6}}` = `<mobile_number>&utm_source=muthoot_follow_up...`)
+  1. URL Button: `Claim Reserved Funds` (URL suffix variable: `{{1}}` = `mobile_number`)
   2. Quick Reply: `Bill mismatch`
   3. Quick Reply: `Call me`
 

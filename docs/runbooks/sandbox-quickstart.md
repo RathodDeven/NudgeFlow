@@ -2,7 +2,7 @@
 
 Test the full NudgeFlow agent stack locally — agent responses, dashboard, WhatsApp, and CSV upload.
 
-## 1. Start Infrastructure
+<!-- ## 1. Start Infrastructure
 
 ```bash
 # Start PostgreSQL, Redis, and n8n
@@ -10,7 +10,7 @@ pnpm db:compose:up
 
 # Verify DB is ready (should show 12 tables)
 sudo docker exec nudgeflow-postgres psql -U nudgeflow -c '\dt'
-```
+``` -->
 
 ## 2. Configure Environment
 

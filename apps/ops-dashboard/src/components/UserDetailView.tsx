@@ -9,7 +9,6 @@ interface UserDetailViewProps {
   token: string
   onClose: () => void
   onStatusChange: (userId: string, newStatus: string) => void
-  isSandbox: boolean
   pendingTasks: PendingHITLTask[]
   onApprove: (taskId: string) => void
   onReject: (taskId: string) => void
@@ -20,11 +19,11 @@ export function UserDetailView({
   token,
   onClose,
   onStatusChange,
-  isSandbox,
   pendingTasks,
   onApprove,
   onReject
 }: UserDetailViewProps) {
+  const isSandbox = import.meta.env.VITE_ENABLE_SANDBOX === 'true'
   const [messages, setMessages] = useState<DbChatMessage[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [inputMessage, setInputMessage] = useState('')
