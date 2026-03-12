@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import fastifyCors from '@fastify/cors'
 import { loadEnv } from '@nudges/config'
 import { generateReplyInputSchema, generateReplyOutputSchema } from '@nudges/domain'
@@ -9,7 +10,6 @@ import { guardOutboundMessage } from '@nudges/safety-compliance'
 import Fastify from 'fastify'
 import { z } from 'zod'
 import { zodToJsonSchema } from 'zod-to-json-schema'
-import { type LoadedSkill, loadSkills } from './skill-loader'
 
 type AgentState = {
   route: 'recovery' | 'support' | 'reject' | 'handoff' | 'proactive_nudge'
@@ -37,86 +37,80 @@ app.register(fastifyCors, {
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 })
 
-const skills = loadSkills(env.AGENT_SKILLS_DIR)
-
-import { fileURLToPath } from 'node:url'
-
-// --- Tenant Loading ---
-// All company-specific content (persona, knowledge, config) lives in tenants/<TENANT_ID>/
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const TENANT_ID = process.env.TENANT_ID ?? 'clickpe'
-const tenantRoot = path.resolve(__dirname, '../../../tenants', TENANT_ID)
 
-const readTenantFile = async (filename: string): Promise<string> => {
+// --- Prompt Loading Helpers ---
+const PROMPTS_ROOT = path.resolve(__dirname, '../../../prompts')
+const TENANT_ROOT = path.resolve(__dirname, '../../../tenants', TENANT_ID)
+
+const readPromptFile = async (filename: string): Promise<string> => {
   try {
-    return await fs.readFile(path.join(tenantRoot, filename), 'utf-8')
+    return await fs.readFile(path.join(PROMPTS_ROOT, filename), 'utf-8')
   } catch {
-    console.warn(`[agent-runtime] tenant file not found: tenants/${TENANT_ID}/${filename}`)
+    console.warn(`[agent-runtime] Global prompt file not found: prompts/${filename}`)
     return ''
   }
 }
 
-const soulContent = await readTenantFile('SOUL.md')
-const staticKnowledgeBase = await readTenantFile('knowledge-base.md')
+const readTenantFile = async (filename: string): Promise<string> => {
+  try {
+    return await fs.readFile(path.join(TENANT_ROOT, filename), 'utf-8')
+  } catch {
+    console.warn(`[agent-runtime] Tenant file not found: tenants/${TENANT_ID}/${filename}`)
+    return ''
+  }
+}
 
-const channelRulesContent = await readTenantFile('channel-rules.md')
-// NOTE: call-playbook.md and daily-ops.md are not loaded from the tenant folder as they are only meant for ops team documentation, not LLM context injection.
+// Load Global Prompts
+const globalIdentity = await readPromptFile('IDENTITY.md')
+const globalWorkflows = await readPromptFile('WORKFLOWS.md')
+const globalConstraints = await readPromptFile('CONSTRAINTS.md')
+const globalSystem = await readPromptFile('SYSTEM.md')
+const universalKnowledge = await readPromptFile('KNOWLEDGE.md')
 
-if (!channelRulesContent) {
+// Load Tenant Prompts (Deeply Generalized)
+const tenantProfile = await readTenantFile('PROFILE.md')
+const tenantChannel = await readTenantFile('CHANNEL.md')
+const tenantWorkflows = await readTenantFile('WORKFLOWS.md')
+const tenantKnowledge = await readTenantFile('KNOWLEDGE.md')
+
+if (!tenantChannel && !globalConstraints) {
   throw new Error(`[agent-runtime] Critical: No channel rules found or loaded for ${TENANT_ID}`)
 }
 
-console.info(`[agent-runtime] Loaded tenant: ${TENANT_ID} from ${tenantRoot}`)
+console.info(`[agent-runtime] Loaded Global Prompts and Tenant: ${TENANT_ID}`)
 
 const graph = {
   invoke: async (_state: AgentState): Promise<void> => undefined
 }
 
-const getSkill = (name: string): LoadedSkill =>
-  skills[name] ?? {
-    name,
-    description: '',
-    body: '',
-    sourcePath: 'missing'
-  }
-
-const buildSystemPrompt = (route: string): string => {
-  const supervisor = getSkill('supervisor-agent')
-  const specialist = route === 'support' ? getSkill('support-specialist') : getSkill('recovery-specialist')
-  const compliance = getSkill('compliance-guard')
-  const tooling = getSkill('tooling-policy')
-  const persuasion = getSkill('persuasion-policy')
-
-  // Stage-router is always useful for per-user decisions
-  const stageRouter = getSkill('stage-router')
-  // Call-escalation helps decide if a call is needed
-  const callEscalation = getSkill('call-escalation')
-
+const buildSystemPrompt = (_route: string): string => {
   const initialOutreachContext = `
 --- INITIAL OUTREACH CONTEXT ---
-If this is the start of the conversation, the user has just received our "Initial Outreach" template:
-"Namaste {{Applicant Name}}! Aapka {{Loan Amount}} ka business loan offer expire hone wala hai. Sirf 1 aakhri step bacha hai: Please upload your {{Pending Document}}. Aapne pehle hi process start kar diya hai, ise miss mat kijiye. Ye funds aapke business growth ke liye block kiye gaye hain. Neeche diye button par click karein aur 2 minute mein process poora karein."
-The user may be responding with one of these quick-replies: "Bill mismatch" or "Call me".
+If this is the start of the conversation, the user has just received our "Initial Outreach" template.
+(Refer to CHANNEL.md for exact content and buttons).
+The user may be responding with session-specific quick-replies (refer to tenant WORKFLOWS.md for handling).
 -------------------------------`
 
+  app.log.info({
+    msg: '=== Assembling System Prompt (Deeply Generalized) ===',
+    tenant: TENANT_ID,
+    hasGlobalIdentity: !!globalIdentity,
+    hasTenantWorkflows: !!tenantWorkflows
+  })
+
   return [
-    soulContent
-      ? `--- AGENT SOUL ---\n${soulContent}\n--- END SOUL ---`
-      : `ROLE: ${getSkill('persona-agent').body}`,
-    `ROLE: ${supervisor.name}\n${supervisor.description}\n${supervisor.body}`,
-    `ROLE: ${specialist.name}\n${specialist.description}\n${specialist.body}`,
-    `ROLE: ${compliance.name}\n${compliance.description}\n${compliance.body}`,
-    `ROLE: ${tooling.name}\n${tooling.description}\n${tooling.body}`,
-    `ROLE: ${persuasion.name}\n${persuasion.description}\n${persuasion.body}`,
-    stageRouter.body ? `ROLE: ${stageRouter.name}\n${stageRouter.description}\n${stageRouter.body}` : '',
-    callEscalation.body
-      ? `ROLE: ${callEscalation.name}\n${callEscalation.description}\n${callEscalation.body}`
-      : '',
-    initialOutreachContext,
-    `--- KNOWLEDGE BASE ---\n${staticKnowledgeBase}\n--- END KNOWLEDGE BASE ---`,
-    `--- CHANNEL RULES ---\n${channelRulesContent}\n--- END CHANNEL RULES ---`,
-    'Hard constraints: keep response body under 400 chars, informational only, one CTA button maximum, no fabricated claims.'
+    `--- AGENT IDENTITY ---\n${globalIdentity}\n--- END IDENTITY ---`,
+    `--- TENANT PROFILE ---\n${tenantProfile}\n--- END PROFILE ---`,
+    `--- SYSTEM RULES ---\n${globalSystem}\n--- END SYSTEM ---`,
+    `--- GENERAL WORKFLOWS ---\n${globalWorkflows}\n--- END GENERAL WORKFLOWS ---`,
+    `--- TENANT WORKFLOWS ---\n${tenantWorkflows}\n--- END TENANT WORKFLOWS ---`,
+    `--- CHANNEL & CONSTRAINTS ---\n${globalConstraints}\n${tenantChannel}\n--- END CHANNEL ---`,
+    `--- UNIVERSAL KNOWLEDGE ---\n${universalKnowledge}\n--- END UNIVERSAL KNOWLEDGE ---`,
+    `--- TENANT KNOWLEDGE ---\n${tenantKnowledge}\n--- END TENANT KNOWLEDGE ---`,
+    initialOutreachContext
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -125,7 +119,7 @@ The user may be responding with one of these quick-replies: "Bill mismatch" or "
 const buildFallbackReply = (
   route: 'recovery' | 'support' | 'reject' | 'proactive_nudge',
   seeded: string,
-  supportContext: string
+  _supportContext: string
 ): string => {
   if (route === 'support') {
     return 'Let me review the documentation regarding your request. I can also help you complete the next loan step now.'
@@ -139,7 +133,7 @@ const buildFallbackReply = (
 app.get('/health', async () => ({
   ok: true,
   service: 'agent-runtime',
-  skillsLoaded: Object.keys(skills).length
+  architecture: 'generalized-markdown'
 }))
 
 app.post('/agent/respond', async (request, reply) => {
@@ -209,10 +203,14 @@ app.post('/agent/respond', async (request, reply) => {
     const systemPrompt = buildSystemPrompt('recovery') // Use general support/recovery prompt
 
     app.log.info({
-      msg: `=== Dispatching AI Prompt (System) ===\n${systemPrompt}\n=============================`
-    })
-    app.log.info({
-      msg: `=== Dispatching AI Prompt (User) ===\n${renderedUserPrompt}\n=============================`
+      msg: '=== Dispatching AI Prompt (Targeted) ===',
+      chatHistory:
+        chatHistory && chatHistory.length > 0
+          ? chatHistory.map(m => `${m.direction === 'inbound' ? 'Customer' : 'Agent'}: ${m.body}`).join('\n')
+          : '(No previous messages)',
+      currentInbound: inboundText || '(none)',
+      stage: session.summaryState.stageContext,
+      isFirstTurn: !chatHistory || chatHistory.length === 0
     })
 
     const response = await generateStructuredWithOpenAI({

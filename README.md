@@ -156,6 +156,9 @@ To test incoming WhatsApp messages locally, you need a tunnel to your port 3000.
    - Copy the `Forwarding` URL (e.g., `https://random-id.ngrok-free.app`).
    - Append `/webhooks/whatsapp/gupshup`.
    - Set this as your **Inbound Webhook URL** in the Gupshup.ai Dashboard.
+   - **Important Settings**:
+     - **Payload Format**: Select **Gupshup format (v2)** (our parser expects this structure).
+     - **Event Selection**: Enable **Message Events** (specifically the "Message" type).
 
 #### Webhook URLs
 - **Local (via ngrok)**: `https://<your-ngrok-subdomain>.ngrok-free.app/webhooks/whatsapp/gupshup`

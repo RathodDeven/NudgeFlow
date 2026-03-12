@@ -87,9 +87,12 @@ To test inbound messages from real WhatsApp users locally:
    ```
 2. **Start Tunnel**: `ngrok http 3000`
 3. **Copy URL**: Use the https forwarding URL (e.g., `https://xyz.ngrok.app`).
-4. **Set Webhook**: In Gupshup Dashboard, set Inbound URL to `<URL>/webhooks/whatsapp/gupshup`.
+4. **Set Webhook**: In Gupshup Dashboard:
+   - **Callback URL**: `<Tunnel-URL>/webhooks/whatsapp/gupshup`
+   - **Payload Format**: Select **Gupshup format (v2)** (Mandatory)
+   - **Events**: Enable **Message Events** (Check "Message" box)
 5. **Send Message**: Send a message to your Gupshup number.
-6. **Observe**: Check `api-gateway` logs for `message_inbound_received`.
+6. **Observe**: Check `api-gateway` logs for `Gupshup Webhook Payload Received`. All event types (message, status, system) are logged for inspection.
 
 ## Service Ports
 

@@ -97,6 +97,8 @@ app.post('/ingestion/excel', async (request, reply) => {
 
 app.post('/webhooks/whatsapp/gupshup', async request => {
   const payload = request.body as InboundWebhook
+  app.log.info({ msg: 'Gupshup Webhook Payload Received', type: payload?.type, payload })
+
   if (payload?.type !== 'message') {
     return { ok: true }
   }
