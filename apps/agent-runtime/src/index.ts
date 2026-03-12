@@ -250,11 +250,18 @@ app.post('/agent/respond', async (request, reply) => {
     const now = new Date()
     const diffDays = Math.floor((now.getTime() - appDate.getTime()) / (1000 * 60 * 60 * 24))
 
+    const factsEntries = Object.entries(session.compactFacts)
+      .filter(([key]) => !['mobile_number', 'user_name', 'user_city', 'user_state', 'application_date', 'last_update_date'].includes(key))
+      .map(([key, value]) => `- ${key.replace(/_/g, ' ')}: ${value}`)
+      .join('\n')
+
     const utilitiesContext = `
 [Utilities Context]
 - Current Date: ${now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
 - Days Since Applied: ${diffDays}
 - Original Application Date: ${appDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+- Last Update Date: ${session.compactFacts.last_update_date ? new Date(session.compactFacts.last_update_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Unknown'}
+${factsEntries}
 `.trim()
 
     const systemPrompt = buildSystemPrompt('recovery', utilitiesContext)

@@ -22,9 +22,9 @@ CREATE TABLE "loan_cases" (
 	"loan_amount" numeric(12, 2),
 	"firm_name" text,
 	"is_reactivated" boolean DEFAULT false NOT NULL,
-	"deep_link" text,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"metadata" jsonb DEFAULT '{}' NOT NULL,
 	CONSTRAINT "loan_cases_tenant_id_partner_case_id_key" UNIQUE("tenant_id","partner_case_id")
 );
 CREATE TABLE "message_events" (

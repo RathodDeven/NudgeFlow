@@ -34,7 +34,10 @@ export type DbUser = {
   loanCaseId?: string
   loanAmount?: number
   firmName?: string
+  isReactivated?: boolean
+  metadata?: Record<string, unknown>
   loanCreatedAt?: string
+  loanUpdatedAt?: string
 }
 
 export type InsertUserRow = {
@@ -48,6 +51,7 @@ export type InsertUserRow = {
   city?: string
   state?: string
   createdAt?: string
+  metadata?: Record<string, unknown>
 }
 
 export type ChatMessage = {
@@ -120,13 +124,14 @@ export const insertUsers = async (
       const actualUserId = userResult.rows[0]?.id as string
 
       await pool.query(
-        `INSERT INTO loan_cases (id, tenant_id, user_id, partner_case_id, current_stage, loan_amount, firm_name, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `INSERT INTO loan_cases (id, tenant_id, user_id, partner_case_id, current_stage, loan_amount, firm_name, created_at, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          ON CONFLICT (tenant_id, partner_case_id) DO UPDATE SET
            current_stage = $5,
            loan_amount = $6,
            firm_name = $7,
            created_at = COALESCE($8, loan_cases.created_at),
+           metadata = loan_cases.metadata || EXCLUDED.metadata,
            updated_at = NOW()`,
         [
           loanCaseId,
@@ -136,7 +141,8 @@ export const insertUsers = async (
           row.currentStage,
           row.loanAmount ?? null,
           row.firmName ?? null,
-          row.createdAt ?? new Date().toISOString()
+          row.createdAt ?? new Date().toISOString(),
+          JSON.stringify(row.metadata ?? {})
         ]
       )
 
@@ -158,7 +164,9 @@ export const listUsers = async (pool: pg.Pool, tenantId: string): Promise<DbUser
        up.locale_hint AS "localeHint", up.city, up.state,
        up.consent_provided AS "consentProvided", up.created_at AS "createdAt",
        lc.current_stage AS "currentStage", lc.partner_case_id AS "partnerCaseId",
-       lc.id AS "loanCaseId", lc.loan_amount AS "loanAmount", lc.firm_name AS "firmName"
+       lc.id AS "loanCaseId", lc.loan_amount AS "loanAmount", lc.firm_name AS "firmName",
+       lc.is_reactivated AS "isReactivated",
+       lc.metadata, lc.created_at AS "loanCreatedAt", lc.updated_at AS "loanUpdatedAt"
      FROM user_profiles up
      LEFT JOIN loan_cases lc ON lc.user_id = up.id AND lc.tenant_id = up.tenant_id
      WHERE up.tenant_id = $1
@@ -176,7 +184,9 @@ export const getUserById = async (pool: pg.Pool, userId: string): Promise<DbUser
        up.locale_hint AS "localeHint", up.city, up.state,
        up.consent_provided AS "consentProvided", up.created_at AS "createdAt",
        lc.current_stage AS "currentStage", lc.partner_case_id AS "partnerCaseId",
-       lc.id AS "loanCaseId", lc.loan_amount AS "loanAmount", lc.firm_name AS "firmName"
+       lc.id AS "loanCaseId", lc.loan_amount AS "loanAmount", lc.firm_name AS "firmName",
+       lc.is_reactivated AS "isReactivated",
+       lc.metadata, lc.created_at AS "loanCreatedAt", lc.updated_at AS "loanUpdatedAt"
      FROM user_profiles up
      LEFT JOIN loan_cases lc ON lc.user_id = up.id AND lc.tenant_id = up.tenant_id
      WHERE up.id = $1`,
@@ -197,7 +207,9 @@ export const getUserByPhoneE164 = async (
        up.locale_hint AS "localeHint", up.city, up.state,
        up.consent_provided AS "consentProvided", up.created_at AS "createdAt",
        lc.current_stage AS "currentStage", lc.partner_case_id AS "partnerCaseId",
-       lc.id AS "loanCaseId", lc.loan_amount AS "loanAmount", lc.firm_name AS "firmName"
+       lc.id AS "loanCaseId", lc.loan_amount AS "loanAmount", lc.firm_name AS "firmName",
+       lc.is_reactivated AS "isReactivated",
+       lc.metadata, lc.created_at AS "loanCreatedAt", lc.updated_at AS "loanUpdatedAt"
      FROM user_profiles up
      LEFT JOIN loan_cases lc ON lc.user_id = up.id AND lc.tenant_id = up.tenant_id
      WHERE up.tenant_id = $1 AND up.phone_e164 = $2`,

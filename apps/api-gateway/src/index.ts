@@ -166,7 +166,12 @@ app.post('/webhooks/whatsapp/gupshup', async request => {
               user_name: user.fullName ?? 'Unknown',
               user_city: user.city ?? 'Unknown',
               user_state: user.state ?? 'Unknown',
-              application_date: user.loanCreatedAt ?? user.createdAt
+              application_date: user.loanCreatedAt ?? user.createdAt,
+              last_update_date: user.loanUpdatedAt ?? user.createdAt,
+              loan_amount: user.loanAmount ?? 'Unknown',
+              partner_case_id: user.partnerCaseId ?? 'Unknown',
+              is_reactivated: user.isReactivated ?? false,
+              ...(user.metadata as Record<string, unknown>)
             },
             messageCount: messages.length,
             tokenEstimate: 0,
@@ -324,18 +329,30 @@ app.post('/users/upload-csv', { preHandler: protectedHandler }, async (request, 
   const stripQuotes = (s: string) => s.replace(/^["']+|["']+$/g, '').trim()
   const normalisePhone = (s: string) => s.replace(/\s+/g, '').replace(/^\+?91/, '')
 
-  const mapped = body.rows.map(r => ({
-    externalUserId: stripQuotes(r.customer_id || r.external_user_id || ''),
-    fullName: r.name || r.full_name || 'Unknown',
-    phoneE164: normalisePhone(r.mobile || r.phone || ''),
-    currentStage: (r.status || 'fresh_loan').toLowerCase(),
-    partnerCaseId: r.loan_application_no || r.partner_case_id || crypto.randomUUID(),
-    loanAmount: r.loan_amount ? Number.parseFloat(r.loan_amount) : undefined,
-    firmName: r.firm_name || undefined,
-    city: r.current_city || r.city || undefined,
-    state: r.current_state || r.state || undefined,
-    createdAt: r.application_creation_date || r.user_creation_date || undefined
-  }))
+  const mapped = body.rows.map(r => {
+    const metadata: Record<string, unknown> = {
+      tenure: r.tenure || undefined,
+      annual_interest: r.annual_interest || undefined,
+      disbursal_amount: r.disbursal_amount || r.disbursement_amount || undefined,
+      loan_type: r.loan_type || undefined,
+      application_updated_date: r.application_updated_date || undefined,
+      last_stage_at: r.application_updated_date || r.application_creation_date || undefined
+    }
+
+    return {
+      externalUserId: stripQuotes(r.customer_id || r.external_user_id || ''),
+      fullName: r.name || r.full_name || 'Unknown',
+      phoneE164: normalisePhone(r.mobile || r.phone || ''),
+      currentStage: (r.status || 'fresh_loan').toLowerCase(),
+      partnerCaseId: r.loan_application_no || r.partner_case_id || crypto.randomUUID(),
+      loanAmount: r.loan_amount ? Number.parseFloat(r.loan_amount) : undefined,
+      firmName: r.firm_name || undefined,
+      city: r.current_city || r.city || undefined,
+      state: r.current_state || r.state || undefined,
+      createdAt: r.application_creation_date || r.user_creation_date || undefined,
+      metadata
+    }
+  })
 
   const result = await insertUsers(dbPool, tid, mapped)
 
