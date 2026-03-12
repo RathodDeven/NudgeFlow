@@ -45,6 +45,9 @@ export function App() {
         currentStage?: string
         loanAmount?: number
         firmName?: string
+        metadata?: Record<string, unknown>
+        applicationCreatedAt?: string
+        applicationUpdatedAt?: string
       }>
     }>('/users', authToken)
       .then(res =>
@@ -56,7 +59,10 @@ export function App() {
             firmName: u.firmName ?? '',
             mobile: u.phoneE164.replace(/^\+?91/, ''),
             status: (u.currentStage ?? 'fresh_loan').toUpperCase(),
-            loanAmount: u.loanAmount ?? 0
+            loanAmount: u.loanAmount ?? 0,
+            metadata: u.metadata,
+            applicationCreatedAt: u.applicationCreatedAt,
+            applicationUpdatedAt: u.applicationUpdatedAt
           }))
         )
       )

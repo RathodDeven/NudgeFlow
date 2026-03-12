@@ -245,13 +245,15 @@ app.post('/agent/respond', async (request, reply) => {
     ].join('\n')
 
     // 2. Compute Contextual Utilities (Current Date, Days Since Applied)
-    const appDateStr = session.compactFacts.application_date
-    const appDate = appDateStr ? new Date(appDateStr) : new Date()
+    const appDateStr = session.compactFacts.application_created_at
+    console.log(`[agent-runtime] Received application_created_at: "${appDateStr}"`)
+    const appDate = (appDateStr && !Number.isNaN(Date.parse(String(appDateStr)))) ? new Date(String(appDateStr)) : new Date()
+    console.log(`[agent-runtime] Parsed appDate: ${appDate?.toISOString()} (fallback used: ${!appDateStr || Number.isNaN(Date.parse(String(appDateStr)))})`)
     const now = new Date()
     const diffDays = Math.floor((now.getTime() - appDate.getTime()) / (1000 * 60 * 60 * 24))
 
     const factsEntries = Object.entries(session.compactFacts)
-      .filter(([key]) => !['mobile_number', 'user_name', 'user_city', 'user_state', 'application_date', 'last_update_date'].includes(key))
+      .filter(([key]) => !['mobile_number', 'user_name', 'user_city', 'user_state', 'application_created_at', 'application_updated_at'].includes(key))
       .map(([key, value]) => `- ${key.replace(/_/g, ' ')}: ${value}`)
       .join('\n')
 
@@ -260,7 +262,7 @@ app.post('/agent/respond', async (request, reply) => {
 - Current Date: ${now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
 - Days Since Applied: ${diffDays}
 - Original Application Date: ${appDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-- Last Update Date: ${session.compactFacts.last_update_date ? new Date(session.compactFacts.last_update_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Unknown'}
+- Last Update Date: ${session.compactFacts.application_updated_at ? new Date(session.compactFacts.application_updated_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Unknown'}
 ${factsEntries}
 `.trim()
 

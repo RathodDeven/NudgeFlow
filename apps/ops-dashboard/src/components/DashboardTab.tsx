@@ -62,6 +62,65 @@ export function DashboardTab({
         </section>
       )}
 
+      <section className="card" style={{ marginBottom: '2rem' }}>
+        <h2>👥 All Ingested Users ({csvUsers.length})</h2>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid #eee' }}>
+                <th style={{ padding: '8px' }}>Name</th>
+                <th style={{ padding: '8px' }}>Customer ID</th>
+                <th style={{ padding: '8px' }}>Mobile</th>
+                <th style={{ padding: '8px' }}>Status</th>
+                <th style={{ padding: '8px' }}>Loan Amount</th>
+                <th style={{ padding: '8px' }}>Application Submitted</th>
+                <th style={{ padding: '8px' }}>Application Updated</th>
+              </tr>
+            </thead>
+            <tbody>
+              {csvUsers.map(user => (
+                <tr
+                  key={user.id}
+                  style={{
+                    borderBottom: '1px solid #eee',
+                    cursor: onUserSelect ? 'pointer' : 'default'
+                  }}
+                  onClick={() => onUserSelect?.(user)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      onUserSelect?.(user)
+                    }
+                  }}
+                  tabIndex={onUserSelect ? 0 : undefined}
+                  className={onUserSelect ? 'hover-row' : ''}
+                >
+                  <td style={{ padding: '8px' }}>{user.name}</td>
+                  <td style={{ padding: '8px' }}>
+                    <code>{user.customerId}</code>
+                  </td>
+                  <td style={{ padding: '8px' }}>{user.mobile}</td>
+                  <td style={{ padding: '8px' }}>
+                    <span className="badge info">{user.status}</span>
+                  </td>
+                  <td style={{ padding: '8px' }}>₹{user.loanAmount.toLocaleString('en-IN')}</td>
+                  <td style={{ padding: '8px', fontSize: '0.85rem' }} className="muted">
+                    {user.applicationCreatedAt
+                      ? `${new Date(user.applicationCreatedAt).toLocaleDateString()} ${new Date(user.applicationCreatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                      : '-'}
+                  </td>
+                  <td style={{ padding: '8px', fontSize: '0.85rem' }} className="muted">
+                    {user.applicationUpdatedAt
+                      ? `${new Date(user.applicationUpdatedAt).toLocaleDateString()} ${new Date(user.applicationUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                      : '-'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       {callQueue.length > 0 && (
         <section className="card" style={{ marginBottom: '2rem', border: '2px solid #ea580c' }}>
           <h2>📞 Call Queue — Manual Calls Required</h2>
@@ -270,53 +329,6 @@ export function DashboardTab({
               </div>
             ))}
         </article>
-      </section>
-
-      <section className="card" style={{ marginTop: '2rem' }}>
-        <h2>👥 All Ingested Users ({csvUsers.length})</h2>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid #eee' }}>
-                <th style={{ padding: '8px' }}>Name</th>
-                <th style={{ padding: '8px' }}>Customer ID</th>
-                <th style={{ padding: '8px' }}>Mobile</th>
-                <th style={{ padding: '8px' }}>Status</th>
-                <th style={{ padding: '8px' }}>Loan Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {csvUsers.map(user => (
-                <tr
-                  key={user.id}
-                  style={{
-                    borderBottom: '1px solid #eee',
-                    cursor: onUserSelect ? 'pointer' : 'default'
-                  }}
-                  onClick={() => onUserSelect?.(user)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      onUserSelect?.(user)
-                    }
-                  }}
-                  tabIndex={onUserSelect ? 0 : undefined}
-                  className={onUserSelect ? 'hover-row' : ''}
-                >
-                  <td style={{ padding: '8px' }}>{user.name}</td>
-                  <td style={{ padding: '8px' }}>
-                    <code>{user.customerId}</code>
-                  </td>
-                  <td style={{ padding: '8px' }}>{user.mobile}</td>
-                  <td style={{ padding: '8px' }}>
-                    <span className="badge info">{user.status}</span>
-                  </td>
-                  <td style={{ padding: '8px' }}>₹{user.loanAmount.toLocaleString('en-IN')}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
       </section>
     </>
   )

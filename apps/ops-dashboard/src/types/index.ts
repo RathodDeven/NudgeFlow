@@ -61,4 +61,7 @@ export type CsvUser = {
   mobile: string
   status: string
   loanAmount: number
+  metadata?: Record<string, unknown>
+  applicationCreatedAt?: string
+  applicationUpdatedAt?: string
 }

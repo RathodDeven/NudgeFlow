@@ -112,6 +112,9 @@ export function UserDetailView({
     setInputMessage('')
     setIsSending(true)
 
+    console.log('[dashboard] Simulating message for user:', user)
+    console.log('[dashboard] application_created_at:', user.applicationCreatedAt)
+
     try {
       // 1. Save user message
       await sendMessageToApi(text, 'inbound')
@@ -152,7 +155,11 @@ export function UserDetailView({
             },
             compactFacts: {
               mobile_number: user.mobile,
-              user_name: user.name
+              user_name: user.name,
+              application_created_at: user.applicationCreatedAt,
+              application_updated_at: user.applicationUpdatedAt ?? user.applicationCreatedAt,
+              loan_amount: user.loanAmount,
+              ...(user.metadata as Record<string, unknown>)
             },
             messageCount: messages.length + 1,
             tokenEstimate: 0,

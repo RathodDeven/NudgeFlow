@@ -139,7 +139,11 @@ app.post('/webhooks/whatsapp/gupshup', async request => {
       const messages = await getUserMessages(dbPool, user.id)
       const nowStr = new Date().toISOString()
 
-      console.log('user', user)
+      console.log(`[api-gateway] Preparing agent request for user: ${user.fullName} (${user.id})`)
+      console.log(`[api-gateway] applicationCreatedAt: ${user.applicationCreatedAt}, createdAt: ${user.createdAt}`)
+      console.log(`[api-gateway] application_created_at being sent: ${user.applicationCreatedAt ?? user.createdAt}`)
+      console.log(`[api-gateway] compactFacts sample: ${JSON.stringify({ application_created_at: user.applicationCreatedAt ?? user.createdAt })}`)
+
 
       const agentRes = await fetch('http://localhost:3010/agent/respond', {
         method: 'POST',
@@ -166,8 +170,8 @@ app.post('/webhooks/whatsapp/gupshup', async request => {
               user_name: user.fullName ?? 'Unknown',
               user_city: user.city ?? 'Unknown',
               user_state: user.state ?? 'Unknown',
-              application_date: user.loanCreatedAt ?? user.createdAt,
-              last_update_date: user.loanUpdatedAt ?? user.createdAt,
+              application_created_at: user.applicationCreatedAt ?? user.createdAt,
+              application_updated_at: user.applicationUpdatedAt ?? user.createdAt,
               loan_amount: user.loanAmount ?? 'Unknown',
               partner_case_id: user.partnerCaseId ?? 'Unknown',
               is_reactivated: user.isReactivated ?? false,
@@ -350,6 +354,8 @@ app.post('/users/upload-csv', { preHandler: protectedHandler }, async (request, 
       city: r.current_city || r.city || undefined,
       state: r.current_state || r.state || undefined,
       createdAt: r.application_creation_date || r.user_creation_date || undefined,
+      applicationCreatedAt: r.application_creation_date || undefined,
+      applicationUpdatedAt: r.application_updated_date || undefined,
       metadata
     }
   })
@@ -368,6 +374,7 @@ app.post('/users/upload-csv', { preHandler: protectedHandler }, async (request, 
 app.get('/users', { preHandler: protectedHandler }, async () => {
   const tid = await getTenantId()
   const users = await listUsers(dbPool, tid)
+  app.log.info({ msg: 'API returning users', count: users.length, firstUser: users[0] })
   return { users }
 })
 

@@ -25,6 +25,8 @@ CREATE TABLE "loan_cases" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"metadata" jsonb DEFAULT '{}' NOT NULL,
+	"application_created_at" timestamp with time zone,
+	"application_updated_at" timestamp with time zone,
 	CONSTRAINT "loan_cases_tenant_id_partner_case_id_key" UNIQUE("tenant_id","partner_case_id")
 );
 CREATE TABLE "message_events" (
