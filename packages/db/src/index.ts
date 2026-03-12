@@ -172,7 +172,11 @@ export const getUserById = async (pool: pg.Pool, userId: string): Promise<DbUser
   return (result.rows[0] as DbUser) ?? null
 }
 
-export const getUserByPhoneE164 = async (pool: pg.Pool, tenantId: string, phoneE164: string): Promise<DbUser | null> => {
+export const getUserByPhoneE164 = async (
+  pool: pg.Pool,
+  tenantId: string,
+  phoneE164: string
+): Promise<DbUser | null> => {
   const result = await pool.query(
     `SELECT
        up.id, up.tenant_id AS "tenantId", up.external_user_id AS "externalUserId",
@@ -272,7 +276,11 @@ export const getUserSessionInfo = async (
   return result.rows[0] as UserSessionInfo
 }
 
-export const updateAgentActive = async (pool: pg.Pool, sessionId: string, isAgentActive: boolean): Promise<boolean> => {
+export const updateAgentActive = async (
+  pool: pg.Pool,
+  sessionId: string,
+  isAgentActive: boolean
+): Promise<boolean> => {
   const result = await pool.query(
     `UPDATE conversation_sessions
      SET is_agent_active = $1, updated_at = NOW()

@@ -7,6 +7,8 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev --parallel",
+    "dev:all": "turbo run dev --filter=@apps/api-gateway --filter=@apps/agent-runtime --filter=@apps/ops-dashboard --parallel",
+    "dev:full": "turbo run dev --filter=@apps/api-gateway --filter=@apps/agent-runtime --filter=@apps/ops-dashboard --filter=@apps/channel-whatsapp --parallel",
     "lint": "biome check .",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",

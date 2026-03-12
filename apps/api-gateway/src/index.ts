@@ -1,6 +1,19 @@
 import { type InboundWebhook, parseInboundWebhook } from '@nudges/channel-gupshup'
 import { loadEnv } from '@nudges/config'
-import { ensureSession, ensureTenant, getPool, getUserById, getUserByPhoneE164, getUserMessages, getUserSessionInfo, insertUsers, listUsers, saveMessage, updateAgentActive, updateUserStage } from '@nudges/db'
+import {
+  ensureSession,
+  ensureTenant,
+  getPool,
+  getUserById,
+  getUserByPhoneE164,
+  getUserMessages,
+  getUserSessionInfo,
+  insertUsers,
+  listUsers,
+  saveMessage,
+  updateAgentActive,
+  updateUserStage
+} from '@nudges/db'
 import { handoffRequestSchema, ingestExcelRequestSchema, metricsResponseSchema } from '@nudges/domain'
 import { loadKnowledgeSet } from '@nudges/knowledge-runtime'
 import { deriveFunnelMetrics } from '@nudges/observability'
@@ -118,7 +131,7 @@ app.post('/webhooks/whatsapp/gupshup', async request => {
 
       const messages = await getUserMessages(dbPool, user.id)
       const nowStr = new Date().toISOString()
-      
+
       const agentRes = await fetch('http://localhost:3010/agent/respond', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -345,7 +358,11 @@ app.get('/users/:id/messages', { preHandler: protectedHandler }, async (request,
 
 app.post('/users/:id/messages', { preHandler: protectedHandler }, async (request, reply) => {
   const userId = (request.params as { id: string }).id
-  const body = request.body as { direction: 'inbound' | 'outbound' | 'system'; body: string; channel?: string }
+  const body = request.body as {
+    direction: 'inbound' | 'outbound' | 'system'
+    body: string
+    channel?: string
+  }
   if (!body?.direction || !body?.body) {
     return reply.status(400).send({ error: 'direction and body are required' })
   }

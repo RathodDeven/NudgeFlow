@@ -123,7 +123,11 @@ export function App() {
   }
 
   const fakeOverrideStatus = (userId: string, newStatus: string) => {
-    setCsvUsers(prev => prev.map(u => u.customerId === userId || u.id === userId ? { ...u, status: newStatus.toUpperCase() } : u))
+    setCsvUsers(prev =>
+      prev.map(u =>
+        u.customerId === userId || u.id === userId ? { ...u, status: newStatus.toUpperCase() } : u
+      )
+    )
     if (selectedUser && (selectedUser.id === userId || selectedUser.customerId === userId)) {
       setSelectedUser({ ...selectedUser, status: newStatus.toUpperCase() })
     }

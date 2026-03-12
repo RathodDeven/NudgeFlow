@@ -128,17 +128,38 @@ Open the **Ops Dashboard** at `http://localhost:3050`. Because you have `VITE_EN
 
 ### Live Mode (Production / Staging)
 ```bash
-# Full services
-pnpm build
-pnpm dev
+# 1. Start all core services in one terminal
+pnpm dev:all
+
+# 2. To include WhatsApp channel (port 3040)
+pnpm dev:full
 
 # Or individual services
 pnpm dev --filter=@apps/agent-runtime
-pnpm dev --filter=@apps/ingestion-worker
 ```
 
 > **Live data:** Place CSV files in `tenants/clickpe/data/dropoffs.csv`, then POST to `/ingestion/excel`.  
 > **Live knowledge:** Edit `tenants/clickpe/knowledge-base.md`.
+
+### Local Webhook Testing (with ngrok)
+To test incoming WhatsApp messages locally, you need a tunnel to your port 3000.
+
+1. **Install ngrok**:
+   ```bash
+   curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null && echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list && sudo apt update && sudo apt install ngrok
+   ```
+2. **Start Tunnel**:
+   ```bash
+   ngrok http 3000
+   ```
+3. **Configure Gupshup.ai**:
+   - Copy the `Forwarding` URL (e.g., `https://random-id.ngrok-free.app`).
+   - Append `/webhooks/whatsapp/gupshup`.
+   - Set this as your **Inbound Webhook URL** in the Gupshup.ai Dashboard.
+
+#### Webhook URLs
+- **Local (via ngrok)**: `https://<your-ngrok-subdomain>.ngrok-free.app/webhooks/whatsapp/gupshup`
+- **Production**: `https://api.nudgeflow.io/webhooks/whatsapp/gupshup` (Replace with your actual domain)
 
 ### Database Schema & Migrations
 - **Master Schema**: [`packages/db/schema/schema.sql`](packages/db/schema/schema.sql)

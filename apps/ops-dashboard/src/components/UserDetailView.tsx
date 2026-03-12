@@ -36,7 +36,9 @@ export function UserDetailView({
   const [isManualSending, setIsManualSending] = useState(false)
   const [manualStatus, setManualStatus] = useState('')
 
-  const userTasks = pendingTasks.filter(t => t.externalUserId === user.customerId || t.externalUserId === user.id)
+  const userTasks = pendingTasks.filter(
+    t => t.externalUserId === user.customerId || t.externalUserId === user.id
+  )
 
   useEffect(() => {
     let mounted = true
@@ -139,14 +141,14 @@ export function UserDetailView({
             loanCaseId: mockUuid,
             isAgentActive: true,
             channel: 'whatsapp',
-            summaryState: { 
+            summaryState: {
               sessionIntent: 'recovery',
               userObjections: [],
               stageContext: user.status.toLowerCase(),
               persuasionPath: 'default',
               commitments: [],
               nextAction: 'continue',
-              preferredLanguage: 'hinglish' 
+              preferredLanguage: 'hinglish'
             },
             compactFacts: {
               mobile_number: user.mobile,
@@ -195,7 +197,6 @@ export function UserDetailView({
         }
       ])
       setSandboxStatus('✅ Agent Replied (Simulator)')
-
     } catch (err: unknown) {
       setSandboxStatus(`❌ Agent Error: ${(err as Error).message}`)
     } finally {
@@ -207,11 +208,11 @@ export function UserDetailView({
   const handleSendManualMessage = async (textOverride?: string) => {
     const text = textOverride ?? agentInputMessage
     if (!text.trim()) return
-    
+
     if (!textOverride) setAgentInputMessage('')
     setIsManualSending(true)
     setManualStatus('')
-    
+
     try {
       if (!isSandbox || useWhatsapp) {
         await authFetch(`/users/${user.id}/send-whatsapp`, token, {
@@ -255,7 +256,15 @@ export function UserDetailView({
 
   return (
     <div className="card" style={{ maxWidth: '900px', margin: '0 auto' }}>
-      <div className="row" style={{ borderBottom: '1px solid #eee', paddingBottom: '1rem', marginBottom: '1rem', alignItems: 'center' }}>
+      <div
+        className="row"
+        style={{
+          borderBottom: '1px solid #eee',
+          paddingBottom: '1rem',
+          marginBottom: '1rem',
+          alignItems: 'center'
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <button type="button" className="secondary" onClick={onClose} style={{ padding: '6px 12px' }}>
             ← Back
@@ -264,8 +273,15 @@ export function UserDetailView({
           <span className="badge info">{user.status}</span>
         </div>
         <div className="row gap-sm" style={{ alignItems: 'center' }}>
-          <label htmlFor="status-override" className="muted" style={{ fontSize: '0.85rem' }}>Override Status:</label>
-          <select id="status-override" value={user.status.toLowerCase()} onChange={handleStatusChange} style={{ padding: '4px 8px', fontSize: '0.9rem' }}>
+          <label htmlFor="status-override" className="muted" style={{ fontSize: '0.85rem' }}>
+            Override Status:
+          </label>
+          <select
+            id="status-override"
+            value={user.status.toLowerCase()}
+            onChange={handleStatusChange}
+            style={{ padding: '4px 8px', fontSize: '0.9rem' }}
+          >
             <option value="login">login</option>
             <option value="fresh_loan">fresh_loan</option>
             <option value="document_upload">document_upload</option>
@@ -277,38 +293,95 @@ export function UserDetailView({
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem', marginBottom: '2rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px' }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr 1fr 1fr',
+          gap: '1rem',
+          marginBottom: '2rem',
+          padding: '1rem',
+          background: '#f8fafc',
+          borderRadius: '8px'
+        }}
+      >
         <div>
-          <p className="muted" style={{ margin: '0 0 4px 0', fontSize: '0.85rem' }}>Mobile</p>
-          <p style={{ margin: 0 }}><strong>{user.mobile}</strong></p>
+          <p className="muted" style={{ margin: '0 0 4px 0', fontSize: '0.85rem' }}>
+            Mobile
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>{user.mobile}</strong>
+          </p>
         </div>
         <div>
-          <p className="muted" style={{ margin: '0 0 4px 0', fontSize: '0.85rem' }}>Customer ID</p>
-          <p style={{ margin: 0 }}><code>{user.customerId}</code></p>
+          <p className="muted" style={{ margin: '0 0 4px 0', fontSize: '0.85rem' }}>
+            Customer ID
+          </p>
+          <p style={{ margin: 0 }}>
+            <code>{user.customerId}</code>
+          </p>
         </div>
         <div>
-          <p className="muted" style={{ margin: '0 0 4px 0', fontSize: '0.85rem' }}>Loan Amount</p>
-          <p style={{ margin: 0 }}><strong>₹{user.loanAmount.toLocaleString('en-IN')}</strong></p>
+          <p className="muted" style={{ margin: '0 0 4px 0', fontSize: '0.85rem' }}>
+            Loan Amount
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>₹{user.loanAmount.toLocaleString('en-IN')}</strong>
+          </p>
         </div>
         {user.firmName && (
-        <div>
-          <p className="muted" style={{ margin: '0 0 4px 0', fontSize: '0.85rem' }}>Firm Name</p>
-          <p style={{ margin: 0 }}><strong>{user.firmName}</strong></p>
-        </div>
+          <div>
+            <p className="muted" style={{ margin: '0 0 4px 0', fontSize: '0.85rem' }}>
+              Firm Name
+            </p>
+            <p style={{ margin: 0 }}>
+              <strong>{user.firmName}</strong>
+            </p>
+          </div>
         )}
       </div>
 
       {userTasks.length > 0 && (
-        <div style={{ marginBottom: '2rem', padding: '1rem', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px' }}>
+        <div
+          style={{
+            marginBottom: '2rem',
+            padding: '1rem',
+            background: '#fffbeb',
+            border: '1px solid #fde68a',
+            borderRadius: '8px'
+          }}
+        >
           <h3 style={{ margin: '0 0 1rem 0', color: '#b45309' }}>⏸️ AI Pending Approval</h3>
           {userTasks.map(task => (
-            <div key={task.id} style={{ background: '#fff', padding: '1rem', borderRadius: '6px', marginBottom: '0.5rem', border: '1px solid #fef3c7' }}>
-              <p style={{ margin: '0 0 0.5rem 0' }}><strong>Message Draft:</strong></p>
-              <pre style={{ margin: '0 0 1rem 0', whiteSpace: 'pre-wrap', background: '#f9f9f9', padding: '0.5rem', borderRadius: '4px' }}>
+            <div
+              key={task.id}
+              style={{
+                background: '#fff',
+                padding: '1rem',
+                borderRadius: '6px',
+                marginBottom: '0.5rem',
+                border: '1px solid #fef3c7'
+              }}
+            >
+              <p style={{ margin: '0 0 0.5rem 0' }}>
+                <strong>Message Draft:</strong>
+              </p>
+              <pre
+                style={{
+                  margin: '0 0 1rem 0',
+                  whiteSpace: 'pre-wrap',
+                  background: '#f9f9f9',
+                  padding: '0.5rem',
+                  borderRadius: '4px'
+                }}
+              >
                 {task.messageBody}
               </pre>
               <div className="row gap-sm">
-                <button type="button" onClick={() => onApprove(task.id)} style={{ background: '#10b981', color: 'white', border: 'none' }}>
+                <button
+                  type="button"
+                  onClick={() => onApprove(task.id)}
+                  style={{ background: '#10b981', color: 'white', border: 'none' }}
+                >
                   Approve & Send
                 </button>
                 <button type="button" onClick={() => onReject(task.id)} className="secondary">
@@ -322,9 +395,27 @@ export function UserDetailView({
 
       <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
         <div style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '0.5rem'
+            }}
+          >
             <h3 style={{ margin: 0 }}>💬 Chat as Neha (Agent)</h3>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem', background: isAgentActive ? '#dcf8c6' : '#fee2e2', padding: '4px 8px', borderRadius: '4px' }}>
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                background: isAgentActive ? '#dcf8c6' : '#fee2e2',
+                padding: '4px 8px',
+                borderRadius: '4px'
+              }}
+            >
               <input type="checkbox" checked={isAgentActive} onChange={handleAgentToggle} />
               <strong>AI Auto-Reply Active</strong>
             </label>
@@ -364,35 +455,77 @@ export function UserDetailView({
             )}
             {isSending && (
               <div
-                style={{ alignSelf: 'flex-start', background: '#fff', padding: '10px 14px', borderRadius: '8px' }}
+                style={{
+                  alignSelf: 'flex-start',
+                  background: '#fff',
+                  padding: '10px 14px',
+                  borderRadius: '8px'
+                }}
               >
                 <span className="muted">Simulated User is typing...</span>
               </div>
             )}
           </div>
-          
-          <div style={{ marginTop: '1rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-              <button 
-                type="button" 
-                className="secondary" 
-                onClick={() => handleSendManualMessage(`Namaste ${user.name}!\n\nWe saw you dropped off during the ${user.status} step. Do you need any help?`)}
+
+          <div
+            style={{
+              marginTop: '1rem',
+              background: '#f8fafc',
+              padding: '1rem',
+              borderRadius: '8px',
+              border: '1px solid #e2e8f0'
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '0.75rem'
+              }}
+            >
+              <button
+                type="button"
+                className="secondary"
+                onClick={() =>
+                  handleSendManualMessage(
+                    `Namaste ${user.name}!\n\nWe saw you dropped off during the ${user.status} step. Do you need any help?`
+                  )
+                }
                 style={{ fontSize: '0.8rem', padding: '4px 8px' }}
                 disabled={isManualSending}
               >
                 Insert & Send Template
               </button>
               {isSandbox && (
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem' }}>
-                  <input type="checkbox" checked={useWhatsapp} onChange={(e) => setUseWhatsapp(e.target.checked)} />
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={useWhatsapp}
+                    onChange={e => setUseWhatsapp(e.target.checked)}
+                  />
                   Test with Real WhatsApp API
                 </label>
               )}
             </div>
             {manualStatus && (
-               <p style={{ fontSize: '0.85rem', marginBottom: '0.5rem', color: manualStatus.includes('❌') ? 'red' : 'green' }}>
-                 {manualStatus}
-               </p>
+              <p
+                style={{
+                  fontSize: '0.85rem',
+                  marginBottom: '0.5rem',
+                  color: manualStatus.includes('❌') ? 'red' : 'green'
+                }}
+              >
+                {manualStatus}
+              </p>
             )}
             <MessageInput
               message={agentInputMessage}
@@ -410,7 +543,7 @@ export function UserDetailView({
             <p className="muted" style={{ fontSize: '0.9rem', marginBottom: '1rem' }}>
               Interact as the <strong>USER</strong> directly to test agent behavior.
             </p>
-            
+
             <div style={{ marginTop: 'auto' }}>
               {sandboxStatus && (
                 <p

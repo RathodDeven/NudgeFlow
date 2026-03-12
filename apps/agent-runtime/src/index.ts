@@ -93,9 +93,12 @@ const buildSystemPrompt = (route: string): string => {
   // Call-escalation helps decide if a call is needed
   const callEscalation = getSkill('call-escalation')
 
-  // NOTE: daily-ops-loop is a batch-workflow skill, NOT needed per-user.
-  // NOTE: call-playbook and daily-ops tenant files are ops-team guides, not per-message context.
-  // NOTE: persona-agent is overridden by tenant SOUL.md, so never injected when SOUL exists.
+  const initialOutreachContext = `
+--- INITIAL OUTREACH CONTEXT ---
+If this is the start of the conversation, the user has just received our "Initial Outreach" template:
+"Namaste {{Applicant Name}}! Aapka {{Loan Amount}} ka business loan offer expire hone wala hai. Sirf 1 aakhri step bacha hai: Please upload your {{Pending Document}}. Aapne pehle hi process start kar diya hai, ise miss mat kijiye. Ye funds aapke business growth ke liye block kiye gaye hain. Neeche diye button par click karein aur 2 minute mein process poora karein."
+The user may be responding with one of these quick-replies: "Bill mismatch" or "Call me".
+-------------------------------`
 
   return [
     soulContent
@@ -110,6 +113,7 @@ const buildSystemPrompt = (route: string): string => {
     callEscalation.body
       ? `ROLE: ${callEscalation.name}\n${callEscalation.description}\n${callEscalation.body}`
       : '',
+    initialOutreachContext,
     `--- KNOWLEDGE BASE ---\n${staticKnowledgeBase}\n--- END KNOWLEDGE BASE ---`,
     `--- CHANNEL RULES ---\n${channelRulesContent}\n--- END CHANNEL RULES ---`,
     'Hard constraints: keep response body under 400 chars, informational only, one CTA button maximum, no fabricated claims.'
@@ -202,10 +206,14 @@ app.post('/agent/respond', async (request, reply) => {
       'Task: Analyze the Chat History above so you do not repeat yourself. Address any specific questions the user asks. Then classify intent, review compliance, and generate a contextual response payload adhering to channel rules.'
     ].join('\n')
 
-    const systemPrompt = buildSystemPrompt('recovery'); // Use general support/recovery prompt
+    const systemPrompt = buildSystemPrompt('recovery') // Use general support/recovery prompt
 
-    app.log.info({ msg: `=== Dispatching AI Prompt (System) ===\n${systemPrompt}\n=============================` })
-    app.log.info({ msg: `=== Dispatching AI Prompt (User) ===\n${renderedUserPrompt}\n=============================` })
+    app.log.info({
+      msg: `=== Dispatching AI Prompt (System) ===\n${systemPrompt}\n=============================`
+    })
+    app.log.info({
+      msg: `=== Dispatching AI Prompt (User) ===\n${renderedUserPrompt}\n=============================`
+    })
 
     const response = await generateStructuredWithOpenAI({
       apiKey: env.OPENAI_API_KEY,

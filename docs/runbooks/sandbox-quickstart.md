@@ -31,25 +31,14 @@ pnpm install
 pnpm build     # Builds all packages (including @nudges/db)
 ```
 
-## 4. Start Services
-
-Open 3 terminals:
+## 4. Start Services (One Command)
 
 ```bash
-# Terminal 1: API Gateway (port 3000) — handles auth, CSV upload, user management
-pnpm dev --filter=@apps/api-gateway
+# Gateway (3000), Runtime (3010), Dashboard (3050)
+pnpm dev:all
 
-# Terminal 2: Agent Runtime (port 3010) — LLM reasoning
-pnpm dev --filter=@apps/agent-runtime
-
-# Terminal 3: Ops Dashboard (port 3050) — admin UI
-pnpm dev --filter=@apps/ops-dashboard
-```
-
-**Optional** — for real WhatsApp delivery:
-```bash
-# Terminal 4: WhatsApp Channel (port 3040)
-pnpm dev --filter=@apps/channel-whatsapp
+# Optional: To include WhatsApp Channel (3040)
+pnpm dev:full
 ```
 
 ## 5. Open Dashboard
@@ -87,6 +76,20 @@ The Dashboard tab shows mock call queue entries:
 - **P3 (yellow)** — Rahul — technical issue
 
 Click **▶ Show Call Script** to see what to say on the call.
+
+## 9. Webhook Testing (ngrok)
+
+To test inbound messages from real WhatsApp users locally:
+
+1. **Install ngrok** (if not already installed):
+   ```bash
+   curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null && echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list && sudo apt update && sudo apt install ngrok
+   ```
+2. **Start Tunnel**: `ngrok http 3000`
+3. **Copy URL**: Use the https forwarding URL (e.g., `https://xyz.ngrok.app`).
+4. **Set Webhook**: In Gupshup Dashboard, set Inbound URL to `<URL>/webhooks/whatsapp/gupshup`.
+5. **Send Message**: Send a message to your Gupshup number.
+6. **Observe**: Check `api-gateway` logs for `message_inbound_received`.
 
 ## Service Ports
 

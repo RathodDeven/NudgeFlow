@@ -57,9 +57,7 @@ export function ChatBubble({ msg, userName }: ChatBubbleProps) {
           }}
         >
           <div style={{ padding: '10px 14px' }}>
-            <strong
-              style={{ fontSize: '0.75rem', color: '#128C7E', display: 'block', marginBottom: '4px' }}
-            >
+            <strong style={{ fontSize: '0.75rem', color: '#128C7E', display: 'block', marginBottom: '4px' }}>
               Neha
             </strong>
             {parsed.imageUrl && (
@@ -100,9 +98,7 @@ export function ChatBubble({ msg, userName }: ChatBubbleProps) {
             boxShadow: '0 1px 2px rgba(0,0,0,.1)'
           }}
         >
-          <strong
-            style={{ fontSize: '0.75rem', color: '#666', display: 'block', marginBottom: '4px' }}
-          >
+          <strong style={{ fontSize: '0.75rem', color: '#666', display: 'block', marginBottom: '4px' }}>
             {msg.role === 'user' ? `You (${userName})` : 'System'}
           </strong>
           <span style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</span>
