@@ -282,13 +282,15 @@ export function UserDetailView({
             onChange={handleStatusChange}
             style={{ padding: '4px 8px', fontSize: '0.9rem' }}
           >
-            <option value="login">login</option>
-            <option value="fresh_loan">fresh_loan</option>
-            <option value="document_upload">document_upload</option>
-            <option value="loan_detail_submitted">loan_detail_submitted</option>
-            <option value="under_review">under_review</option>
-            <option value="credit_decisioning">credit_decisioning</option>
-            <option value="converted">converted</option>
+            <option value="journey_started">Journey Started</option>
+            <option value="offer">Offer</option>
+            <option value="fresh_loan">Fresh Loan</option>
+            <option value="document_upload">Document Upload</option>
+            <option value="loan_detail_submitted">Loan Detail Submitted</option>
+            <option value="under_review">Under Review</option>
+            <option value="credit_decisioning">Credit Decisioning</option>
+            <option value="approved">Approved</option>
+            <option value="disbursal">Disbursal</option>
           </select>
         </div>
       </div>

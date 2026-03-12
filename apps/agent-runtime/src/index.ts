@@ -5,7 +5,7 @@ import fastifyCors from '@fastify/cors'
 import { loadEnv } from '@nudges/config'
 import { generateReplyInputSchema, generateReplyOutputSchema } from '@nudges/domain'
 import { generateStructuredWithOpenAI } from '@nudges/provider-openai'
-import { detectLanguage } from '@nudges/provider-sarvam'
+import { detectLanguage, generateChatWithSarvam } from '@nudges/provider-sarvam'
 import { guardOutboundMessage } from '@nudges/safety-compliance'
 import Fastify from 'fastify'
 import { z } from 'zod'
@@ -153,13 +153,16 @@ app.post('/agent/respond', async (request, reply) => {
   // 1. Detect language EARLY to inform the LLM and setup translation
   const startLanguageDetection = Date.now()
 
-  // Fast-path: Detect English/Hindi locally for short messages to skip remote API latency
+  // Fast-path: Detect Hindi Devanagari locally to skip remote API latency
   let detectedLanguage: string | null = null
-  const isBasicText = /^[a-zA-Z0-9\s.,!?'"()-]+$/.test(inboundText)
+  const isStrictEnglish = /^[a-zA-Z0-9\s.,!?'"()-]+$/.test(inboundText) && !/(kya|loan|bhai|karna|hai|hum|aap|tame|kon|chho|naamu|hu|kem|nathi)/i.test(inboundText)
   const hasDevanagari = /[\u0900-\u097F]/.test(inboundText)
 
-  if (inboundText.length < 30 && (isBasicText || (hasDevanagari && !inboundText.includes('?')))) {
-    detectedLanguage = hasDevanagari ? 'hi-IN' : 'en-IN'
+  if (inboundText.length < 30 && hasDevanagari && !inboundText.includes('?')) {
+    detectedLanguage = 'hi-IN'
+  } else if (inboundText.length < 15 && isStrictEnglish && !/(tame|kon|chho|hai|kya|aap)/i.test(inboundText)) {
+    // Only trust fast-path English if it's very short AND doesn't look like Hinglish/Gujarati particles
+    detectedLanguage = 'en-IN'
   } else {
     detectedLanguage = await detectLanguage(inboundText, env.SARVAM_API_KEY, env.SARVAM_BASE_URL)
   }
@@ -168,7 +171,7 @@ app.post('/agent/respond', async (request, reply) => {
   app.log.info({
     msg: 'Language Detection completed',
     inboundLanguage,
-    isFastPath: !detectedLanguage && (isBasicText || hasDevanagari),
+    isFastPath: !!detectedLanguage && inboundLanguage !== 'en-IN', // True if we matched a non-English fast-path
     timeMs: Date.now() - startLanguageDetection
   })
 
@@ -194,12 +197,23 @@ app.post('/agent/respond', async (request, reply) => {
       isOutOfScope: z
         .boolean()
         .describe('True if the user is asking about politics, crypto, jokes, or things unrelated to loans.'),
+      isRegionalRequired: z
+        .boolean()
+        .describe(
+          'True if the detected language is an Indic language (Hindi, Marathi, etc.) or Hinglish and requires Sarvam AI for a natural regional response.'
+        ),
+      regionalResponseStrategy: z
+        .string()
+        .nullable()
+        .describe(
+          'The exact instructions and key points for Sarvam AI to use when generating the regional message. Include tone, specific loan facts, and the next step.'
+        ),
       whatsappPayload: z
         .object({
           body: z
             .string()
             .describe(
-              'The final crafted message text. If intent is SUPPORT, this MUST be exactly ONE SENTENCE and contain NO loan nudges.'
+              'The English version of the message text. If isRegionalRequired is false, this is used as the final message.'
             ),
           button: z
             .object({
@@ -256,14 +270,52 @@ app.post('/agent/respond', async (request, reply) => {
     const timeOpenAI = Date.now() - startTimeOpenAI
     app.log.info({ msg: 'OpenAI execution completed', timeMs: timeOpenAI })
 
-    const { intent, requiresEscalation, isOutOfScope, whatsappPayload } = response.data as z.infer<
-      typeof responseSchema
-    >
+    const { intent, requiresEscalation, isOutOfScope, isRegionalRequired, regionalResponseStrategy, whatsappPayload } =
+      response.data as z.infer<typeof responseSchema>
 
     llmText = whatsappPayload.body
     usedModel = response.model
 
-    if (env.SARVAM_API_KEY && !['en-IN', 'hi-IN'].includes(inboundLanguage)) {
+    // 3. REGIONAL GENERATION (Switch to Sarvam if required)
+    if (env.SARVAM_API_KEY && isRegionalRequired && regionalResponseStrategy) {
+      try {
+        const startTimeSarvam = Date.now()
+        const sarvamRes = await generateChatWithSarvam({
+          apiKey: env.SARVAM_API_KEY,
+          messages: [
+            {
+              role: 'system',
+              content: `You are a helpful loan recovery assistant for ${TENANT_ID}.
+Generate a natural, friendly, and concise response in ${inboundLanguage} based on this strategy:
+${regionalResponseStrategy}
+
+Return ONLY the response text. Do not include any prefixes like "Assistant:" or "Response:".`
+            },
+            {
+              role: 'user',
+              content: inboundText
+            }
+          ]
+        })
+        llmText = sarvamRes.content
+        usedModel = `hybrid(${usedModel} + sarvam)`
+        app.log.info({
+          msg: 'Sarvam Regional Generation completed',
+          language: inboundLanguage,
+          timeMs: Date.now() - startTimeSarvam
+        })
+      } catch (err) {
+        app.log.warn({ msg: 'Sarvam Generation failed, falling back to OpenAI translation/text', err })
+      }
+    }
+
+    // 4. Fallback Translation (Legacy) if regional generation wasn't used but language is non-English
+    if (
+      env.SARVAM_API_KEY &&
+      !['en-IN', 'hi-IN'].includes(inboundLanguage) &&
+      !llmText.includes(inboundLanguage) && // heuristic to check if it's already regional
+      !isRegionalRequired
+    ) {
       try {
         const apiKey = env.SARVAM_API_KEY
         const startTranslation = Date.now()

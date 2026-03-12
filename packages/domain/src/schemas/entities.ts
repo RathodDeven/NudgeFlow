@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 export const loanStageSchema = z.enum([
+  'journey_started',
   'login',
   'otp_verify',
   'pan',
@@ -12,10 +13,13 @@ export const loanStageSchema = z.enum([
   'offer_accept',
   'fresh_loan',
   'document_upload',
+  'loan_detail_submitted',
   'under_review',
   'vkyc',
   'vpd',
   'credit_decisioning',
+  'approved',
+  'disbursal',
   'boost_offer',
   'converted',
   'inactive'

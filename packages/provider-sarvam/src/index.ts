@@ -19,6 +19,18 @@ export type TranslationResult = {
   provider: 'sarvam'
 }
 
+export type ChatRequest = {
+  apiKey: string
+  model?: string
+  messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>
+  temperature?: number
+}
+
+export type ChatResult = {
+  content: string
+  provider: 'sarvam'
+}
+
 const getSarvamClient = (apiKey: string): SarvamAIClient => new SarvamAIClient({ apiSubscriptionKey: apiKey })
 
 /**
@@ -53,6 +65,26 @@ export const translateWithSarvam = async (request: TranslationRequest): Promise<
   })
   return {
     translatedText: result.translated_text ?? request.sourceText,
+    provider: 'sarvam'
+  }
+}
+
+/**
+ * Generate a chat completion using Sarvam AI's Chat API.
+ * Recommended for high-quality Indic language and Hinglish responses.
+ */
+export const generateChatWithSarvam = async (request: ChatRequest): Promise<ChatResult> => {
+  const client = getSarvamClient(request.apiKey)
+  // @ts-ignore - The SDK types might lag behind the API features
+  const result = await client.chat.completions({
+    // biome-ignore lint/suspicious/noExplicitAny: sarvamai SDK uses a strict union for model IDs
+    model: (request.model ?? 'sarvam-30b') as any,
+    messages: request.messages,
+    temperature: request.temperature ?? 0.1
+  })
+
+  return {
+    content: result.choices?.[0]?.message?.content ?? '',
     provider: 'sarvam'
   }
 }
