@@ -7,13 +7,19 @@ This repository is the monorepo root for the NudgeFlow loan-reactivation MVP.
 ```
 tenants/                       ← One folder per company deployment
   <tenant-id>/
-    SOUL.md                    ← Agent persona, tone, identity, boundaries
-    channel-rules.md           ← WhatsApp CTA layout, sizing limits, and deep link template
-    knowledge-base.md          ← Business knowledge (loan journey, FAQs, rules)
-    call-playbook.md           ← (optional) Manual call scripts, priority matrix, trigger conditions
-    daily-ops.md               ← (optional) Daily execution loop, tracker fields, blocker codes
+    PROFILE.md                 ← [DEEP-GENERALIZATION] Brand metadata (name, emoji, partner)
+    CHANNEL.md                 ← [DEEP-GENERALIZATION] WhatsApp templates & deep link formula
+    KNOWLEDGE.md               ← [DEEP-GENERALIZATION] Tenant-specific product facts
+    WORKFLOWS.md               ← [DEEP-GENERALIZATION] Tenant-specific rescue scenarios (e.g. Bill Mismatch)
     data/
       dropoffs.csv             ← User drop-off CSV for ingestion
+
+prompts/                       ← [NEW] Centralized Global Multi-Tenant Instructions (Pure)
+  IDENTITY.md                  ← Global persona, tone, and Hinglish-first rules
+  WORKFLOWS.md                 ← Global nudge strategy and support reasoning
+  CONSTRAINTS.md               ← Messaging limits, character caps, and single CTA rules
+  SYSTEM.md                    ← Safety, governance, and escalation protocols
+  KNOWLEDGE.md                 ← Universal business knowledge (MSME basics)
 
 tests/sandbox/
   tenants/
@@ -24,17 +30,7 @@ tests/sandbox/
       data/dropoffs.csv
   mappings/                    ← Field mapping profiles for CSV normalization
 
-skills/                        ← Company-agnostic agent framework skills
-  supervisor-agent/SKILL.md
-  recovery-specialist/SKILL.md
-  support-specialist/SKILL.md
-  compliance-guard/SKILL.md
-  tooling-policy/SKILL.md
-  persona-agent/SKILL.md       ← Generic fallback; overridden by tenant SOUL.md
-  persuasion-policy/SKILL.md
-  stage-router/SKILL.md        ← Route actions by loan stage + detected blocker
-  call-escalation/SKILL.md     ← Decide when manual call needed (P1/P2/P3 priority)
-  daily-ops-loop/SKILL.md      ← Guide daily batch processing workflow
+[DEPRECATED] skills/           ← Legacy behavior logic (now merged into prompts/ and tenants/)
 
 apps/                          ← Deployable services
 packages/                      ← Shared, company-agnostic modules
@@ -56,14 +52,11 @@ We use **Neon DB** for both sandbox and production.
 
 ## How Tenant Loading Works
 
-At startup, `apps/agent-runtime` reads the `TENANT_ID` environment variable (default: `clickpe`) and loads:
-- `tenants/${TENANT_ID}/SOUL.md` → injected as the LLM system prompt persona block
-- `tenants/${TENANT_ID}/knowledge-base.md` → injected as knowledge context for every session
-- `tenants/${TENANT_ID}/channel-rules.md` → configures the expected WhatsApp payload structure and deep link template
-- `tenants/${TENANT_ID}/call-playbook.md` → (optional) manual call scripts and priority rules, injected when present
-- `tenants/${TENANT_ID}/daily-ops.md` → (optional) daily execution loop and tracker config, injected when present
+At startup, `apps/agent-runtime` loads generalized instruction modules from `prompts/` and layer-overrides from `tenants/${TENANT_ID}/`:
+- **Global Purity**: `prompts/IDENTITY.md`, `WORKFLOWS.md`, `CONSTRAINTS.md`, `SYSTEM.md`, `KNOWLEDGE.md`.
+- **Tenant Context**: `tenants/${TENANT_ID}/PROFILE.md`, `CHANNEL.md`, `KNOWLEDGE.md`, `WORKFLOWS.md`.
 
-To **add a new company**, create `tenants/<id>/` with the three required markdown files (and optionally `call-playbook.md` and `daily-ops.md`) and set `TENANT_ID=<id>` in `.env`. No code changes are required.
+To **add a new company**, create `tenants/<id>/` with the four required markdown files and set `TENANT_ID=<id>` in `.env`. The core agent logic remains untouched in `prompts/`.
 
 ## Product Constraints (Do Not Violate)
 1. WhatsApp-first MVP; voice is interface-ready only.
@@ -89,9 +82,9 @@ To **add a new company**, create `tenants/<id>/` with the three required markdow
 
 ## Agent Architecture & User Flow
 - **Inbound Webhook Flow**: User replies on WhatsApp → `apps/api-gateway` (`/webhooks/whatsapp/gupshup`) parses Gupshup body → Maps phone number to `loanCaseId` via DB → Saves inbound message to `message_events` → POSTs chat history to `apps/agent-runtime` (`/agent/respond`).
-- **Agent Generation Flow**: `/agent/respond` → Intent Classification → Checks chat history context → Skill & Prompt Assembly (with tenant SOUL + knowledge) → LLM Generation → Outbound Guardrail.
-- **Prompt Assembly**: Tenant `SOUL.md` is the persona; framework skills (supervisor, specialist, compliance) provide structural behavior; `knowledge-base.md` and `channel-rules.md` provide business context and output format constraints.
-- **Session Management**: `packages/session-memory/src/index.ts`. Sessions are compacted when tokens exceed limits, extracting `commitments` and `userObjections` to profile users across turns.
+- **Agent Generation Flow**: `/agent/respond` → Intent Classification → Checks chat history context → **Generalized Instruction Assembly** (Global `prompts/` + Tenant `tenants/`) → LLM Generation → Outbound Guardrail.
+- **Prompt Assembly**: The agent is purely instruction-driven. It merges global strategic files (IDENTITY, SYSTEM, WORKFLOWS) with tenant contextual overrides (PROFILE, CHANNEL, WORKFLOWS). 
+- **Session Management**: Sessions are **Stateless Conversations**. `api-gateway` sends full chat history from Neon DB (`message_events`) for every request.
 - **Payload & Dispatch**: The LLM natively dictates the final deeply-linked URL and CTA string as part of its strictly formulated `whatsappPayload` JSON block. `api-gateway` saves this response to DB and dispatches it immediately via `apps/channel-whatsapp`.
 
 ## Context Update Rule (Required)
@@ -115,11 +108,8 @@ Required updates:
 5. Report clearly when checks cannot run due to environment limits.
 
 ## Skill Loading Contract
-- `apps/agent-runtime` loads prompts/policies from `skills/*/SKILL.md` at runtime.
-- Tenant `SOUL.md` takes precedence over `skills/persona-agent/SKILL.md` for persona.
-- Supervisor chooses specialist skill context.
-- Compliance guard skill applies to all outbound responses.
-- Tool policy skill defines allowed tool usage and escalation boundaries.
-- Stage router skill determines next action based on user stage and blocker.
-- Call escalation skill evaluates whether a manual call is needed (P1/P2/P3).
-- Daily ops loop skill guides batch processing workflows.
+- `apps/agent-runtime` loads prompts from `prompts/*.md` at runtime.
+- Tenant `PROFILE.md` specifies brand identity (Neha, ClickPe, etc.).
+- Global `WORKFLOWS.md` defines general reasoning; Tenant `WORKFLOWS.md` defines specific rescue flows (Bill Mismatch).
+- Global `SYSTEM.md` handles compliance, scope control, and escalation.
+- Global `CONSTRAINTS.md` + Tenant `CHANNEL.md` define the output format and hard limits.

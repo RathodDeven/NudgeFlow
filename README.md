@@ -14,24 +14,20 @@ WhatsApp-first proactive loan reactivation agent — multi-tenant, modular, buil
 ```
 tenants/                    ← One folder per company (all company-specific data)
   clickpe/
-    SOUL.md                 ← Agent identity: name, persona, tone, language rules
-    channel-rules.md        ← WhatsApp CTA layout, sizing limits, and deep link template
-    knowledge-base.md       ← Business knowledge injected into every LLM session
+    PROFILE.md              ← Agent identity: name, persona, tone, language rules
+    CHANNEL.md              ← WhatsApp CTA layout, sizing limits, and deep link template
+    KNOWLEDGE.md            ← Tenant-specific product knowledge
+    WORKFLOWS.md            ← [NEW] Tenant-specific rescue scenarios (e.g. Bill Mismatch)
     data/dropoffs.csv       ← Drop-off user data for ingestion
 
-tests/sandbox/
-  tenants/
-    clickpe/                ← Sandbox mirror of live (utmCampaign = 'nudge_sandbox')
-      SOUL.md / channel-rules.md / knowledge-base.md / data/dropoffs.csv
-  mappings/                 ← CSV field-mapping profiles
+prompts/                    ← [NEW] Centralized Global Multi-Tenant Instructions (Pure)
+  IDENTITY.md               ← Global persona and Hinglish rules
+  WORKFLOWS.md              ← Global nudge strategy and support reasoning
+  CONSTRAINTS.md            ← Messaging limits and channel rules
+  SYSTEM.md                 ← Safety and escalation protocols
+  KNOWLEDGE.md              ← Universal business knowledge (MSME basics)
 
-skills/                     ← Company-agnostic agent framework
-  supervisor-agent/         ← Orchestrates specialist selection
-  recovery-specialist/      ← Handles loan reactivation nudges
-  support-specialist/       ← Handles user questions
-  compliance-guard/         ← Guardrails on all outbound messages
-  tooling-policy/           ← Tool usage rules
-  persona-agent/            ← Generic persona fallback (overridden by tenant SOUL.md)
+[DEPRECATED] skills/        ← Legacy behavior logic (now merged into prompts/ and tenants/)
 
 apps/                       ← Deployable services
 packages/                   ← Shared, company-agnostic modules
@@ -40,50 +36,43 @@ infra/                      ← Docker and cloud bootstrap
 
 ---
 
-## Multi-Tenant Architecture
+All company-specific content lives in `tenants/<tenant-id>/`. The runtime merges global instructions from `prompts/` with tenant-specific overrides:
 
-All company-specific content lives in `tenants/<tenant-id>/`. The runtime selects the active tenant via `TENANT_ID` env var and loads:
-
-| File | Purpose |
-|---|---|
-| `SOUL.md` | Agent persona, tone, language rules, goals, and boundaries for this company's users |
-| `channel-rules.md` | WhatsApp message constraints, CTA button rules, and deep link formula |
-| `knowledge-base.md` | Business knowledge (stages, documents, rules) injected verbatim into every LLM session |
-| `data/dropoffs.csv` | CSV file of users who dropped off — ingested via `ingestion-worker` |
+| File | Level | Purpose |
+|---|---|---|
+| `prompts/IDENTITY.md` | Global | Core persona, tone, and Hinglish-first rules |
+| `tenants/*/PROFILE.md`| Tenant | Brand metadata (Agent Name, Company, Emoji) |
+| `prompts/WORKFLOWS.md`| Global | High-level recovery and support strategies |
+| `tenants/*/WORKFLOWS.md`| Tenant | Specific rescue flows (e.g. Bill Mismatch resolution) |
+| `prompts/CONSTRAINTS.md`| Global | Global messaging limits and WhatsApp rules |
+| `tenants/*/CHANNEL.md` | Tenant | WhatsApp template IDs and deep link configuration |
+| `prompts/KNOWLEDGE.md` | Global | Universal business knowledge (MSME basics) |
+| `tenants/*/KNOWLEDGE.md`| Tenant | Tenant-specific product facts and FAQs |
 
 ### Adding A New Company
 
-```bash
-mkdir -p tenants/acme
-```
+To add a new tenant (e.g. `acme`), create `tenants/acme/` with four required files:
 
-Then create three files:
-
-**`tenants/acme/SOUL.md`** — Agent identity:
+**`tenants/acme/PROFILE.md`** — Brand metadata:
 ```markdown
-## Identity
+## Profile
 - Name: Priya
 - Company: Acme Finance
-- Language: Default English, switch to Hindi if user replies in Hindi
-
-## Persona & Tone
-You are Priya...
-
-## Boundaries
-- Only discuss loan applications, status, and required documents.
+- Partner: Muthoot Finance
+- Emoji: 🚀
 ```
 
-**`tenants/acme/channel-rules.md`** — Channel limits & link building:
+**`tenants/acme/CHANNEL.md`** — Channel config:
 ```markdown
-## Deep Link Configuration
-Use the following template, replacing `{{MOB_NUM}}` with the exact mobile number from the user's facts:
-`https://your-app.com/resume?mob={{MOB_NUM}}&utm_source=acme_follow_up&utm_medium=whatsapp&utm_campaign=nudge_agent`
+## Deep Link template
+`https://acme.nudgeflow.io/resume?m={{MOB_NUM}}`
 
-## WhatsApp CTA Button
-ALWAYS use the exact label: `Resume Application 🚀`
+## Buttons
+- Label: `Resume Now`
 ```
 
-**`tenants/acme/knowledge-base.md`** — Business knowledge (stages, document rules, FAQs).
+**`tenants/acme/WORKFLOWS.md`** — Contextual scenarios (e.g. Bill Mismatch).
+**`tenants/acme/KNOWLEDGE.md`** — Tenant-specific interest rates and office facts.
 
 Then set `TENANT_ID=acme` in `.env`. **No code changes or configs to compile.**
 
