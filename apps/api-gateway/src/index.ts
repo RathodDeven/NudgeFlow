@@ -14,7 +14,12 @@ import {
   updateAgentActive,
   updateUserStage
 } from '@nudges/db'
-import { handoffRequestSchema, ingestExcelRequestSchema, metricsResponseSchema } from '@nudges/domain'
+import {
+  handoffRequestSchema,
+  ingestExcelRequestSchema,
+  metricsResponseSchema,
+  userProfileSchema
+} from '@nudges/domain'
 import { loadKnowledgeSet } from '@nudges/knowledge-runtime'
 import { deriveFunnelMetrics } from '@nudges/observability'
 import Fastify, { type FastifyRequest } from 'fastify'
@@ -133,6 +138,8 @@ app.post('/webhooks/whatsapp/gupshup', async request => {
 
       const messages = await getUserMessages(dbPool, user.id)
       const nowStr = new Date().toISOString()
+
+      console.log('user', user)
 
       const agentRes = await fetch('http://localhost:3010/agent/respond', {
         method: 'POST',

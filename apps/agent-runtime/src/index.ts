@@ -102,17 +102,18 @@ The user may be responding with session-specific quick-replies (refer to tenant 
     hasTenantWorkflows: !!tenantWorkflows
   })
 
+  // REORDERED FOR PROMPT CACHING: Static files first, Dynamic context last.
   return [
     `--- AGENT IDENTITY ---\n${globalIdentity}\n--- END IDENTITY ---`,
-    `--- TENANT PROFILE ---\n${tenantProfile}\n--- END PROFILE ---`,
     `--- SYSTEM RULES ---\n${globalSystem}\n--- END SYSTEM ---`,
-    `--- TIME & CONTEXT UTILITIES ---\n${globalUtilities}\n${utilitiesContext}\n--- END UTILITIES ---`,
-    `--- GENERAL WORKFLOWS ---\n${globalWorkflows}\n--- END GENERAL WORKFLOWS ---`,
-    `--- TENANT WORKFLOWS ---\n${tenantWorkflows}\n--- END TENANT WORKFLOWS ---`,
     `--- CHANNEL & CONSTRAINTS ---\n${globalConstraints}\n${tenantChannel}\n--- END CHANNEL ---`,
     `--- UNIVERSAL KNOWLEDGE ---\n${universalKnowledge}\n--- END UNIVERSAL KNOWLEDGE ---`,
     `--- TENANT KNOWLEDGE ---\n${tenantKnowledge}\n--- END TENANT KNOWLEDGE ---`,
-    initialOutreachContext
+    `--- TENANT PROFILE ---\n${tenantProfile}\n--- END PROFILE ---`,
+    `--- GENERAL WORKFLOWS ---\n${globalWorkflows}\n--- END GENERAL WORKFLOWS ---`,
+    `--- TENANT WORKFLOWS ---\n${tenantWorkflows}\n--- END TENANT WORKFLOWS ---`,
+    initialOutreachContext,
+    `--- TIME & CONTEXT UTILITIES ---\n${globalUtilities}\n${utilitiesContext}\n--- END UTILITIES ---`
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -151,11 +152,23 @@ app.post('/agent/respond', async (request, reply) => {
 
   // 1. Detect language EARLY to inform the LLM and setup translation
   const startLanguageDetection = Date.now()
-  const detectedLanguage = await detectLanguage(inboundText, env.SARVAM_API_KEY, env.SARVAM_BASE_URL)
+
+  // Fast-path: Detect English/Hindi locally for short messages to skip remote API latency
+  let detectedLanguage: string | null = null
+  const isBasicText = /^[a-zA-Z0-9\s.,!?'"()-]+$/.test(inboundText)
+  const hasDevanagari = /[\u0900-\u097F]/.test(inboundText)
+
+  if (inboundText.length < 30 && (isBasicText || (hasDevanagari && !inboundText.includes('?')))) {
+    detectedLanguage = hasDevanagari ? 'hi-IN' : 'en-IN'
+  } else {
+    detectedLanguage = await detectLanguage(inboundText, env.SARVAM_API_KEY, env.SARVAM_BASE_URL)
+  }
+
   const inboundLanguage = detectedLanguage || 'en-IN'
   app.log.info({
-    msg: 'Early Language Detection completed',
+    msg: 'Language Detection completed',
     inboundLanguage,
+    isFastPath: !detectedLanguage && (isBasicText || hasDevanagari),
     timeMs: Date.now() - startLanguageDetection
   })
 
@@ -185,7 +198,9 @@ app.post('/agent/respond', async (request, reply) => {
         .object({
           body: z
             .string()
-            .describe('The final crafted message text to send to the user, keeping under 450 chars.'),
+            .describe(
+              'The final crafted message text. If intent is SUPPORT, this MUST be exactly ONE SENTENCE and contain NO loan nudges.'
+            ),
           button: z
             .object({
               buttonLabel: z.string().describe('The label for the CTA button according to channel rules.'),
@@ -193,7 +208,9 @@ app.post('/agent/respond', async (request, reply) => {
             })
             .nullable()
             .optional()
-            .describe('Provide ONLY if the nudge logic REQUIRES a deep-link CTA to move the loan forward.')
+            .describe(
+              'Provide ONLY if intent is RECOVERY and a deep-link CTA is required to move the loan forward. For SUPPORT, this MUST be null.'
+            )
         })
         .describe('The entire payload to issue to the user.')
     })
@@ -210,7 +227,7 @@ app.post('/agent/respond', async (request, reply) => {
       `Session summary: ${JSON.stringify(session.summaryState)}`,
       `Stage: ${session.summaryState.stageContext}`,
       `Exact mobile number: ${session.compactFacts.mobile_number || 'unknown'}`,
-      'Task: Analyze the Chat History above so you do not repeat yourself. Address any specific questions the user asks. Then classify intent, review compliance, and generate a contextual response payload adhering to channel rules. If the incoming language is regional (e.g. Gujarati), the system will translate your response, so keep it direct.'
+      'Task: 1. Review the "Chat History" to understand exactly what was just said. 2. If the user asks a meta-question (e.g., "What was our last topic?", "What did you say?"), answer it based ONLY on the history. 3. Address any specific support questions concisely. 4. Classify intent and generate a contextual response. Do not repeat introductions if already done.'
     ].join('\n')
 
     // 2. Compute Contextual Utilities (Current Date, Days Since Applied)
@@ -269,9 +286,9 @@ app.post('/agent/respond', async (request, reply) => {
     }
 
     if (whatsappPayload.button) {
-      payloadPlainText = `${llmText}\n\n🔗 ${whatsappPayload.button.buttonLabel}: ${whatsappPayload.button.url}\n\n_${footer}_`
+      payloadPlainText = `${llmText}\n\n🔗 ${whatsappPayload.button.buttonLabel}: ${whatsappPayload.button.url}`
     } else {
-      payloadPlainText = `${llmText}\n\n_${footer}_`
+      payloadPlainText = llmText
     }
 
     if (requiresEscalation) {
