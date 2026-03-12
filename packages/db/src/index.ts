@@ -34,6 +34,7 @@ export type DbUser = {
   loanCaseId?: string
   loanAmount?: number
   firmName?: string
+  loanCreatedAt?: string
 }
 
 export type InsertUserRow = {
@@ -46,6 +47,7 @@ export type InsertUserRow = {
   firmName?: string
   city?: string
   state?: string
+  createdAt?: string
 }
 
 export type ChatMessage = {
@@ -91,9 +93,13 @@ export const insertUsers = async (
 
     try {
       await pool.query(
-        `INSERT INTO user_profiles (id, tenant_id, external_user_id, full_name, phone_e164, city, state, consent_provided)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, true)
-         ON CONFLICT (tenant_id, external_user_id) DO NOTHING`,
+        `INSERT INTO user_profiles (id, tenant_id, external_user_id, full_name, phone_e164, city, state, created_at, consent_provided)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
+         ON CONFLICT (tenant_id, external_user_id) DO UPDATE SET
+           full_name = EXCLUDED.full_name,
+           city = EXCLUDED.city,
+           state = EXCLUDED.state,
+           created_at = COALESCE(EXCLUDED.created_at, user_profiles.created_at)`,
         [
           userId,
           tenantId,
@@ -101,7 +107,8 @@ export const insertUsers = async (
           row.fullName,
           row.phoneE164,
           row.city ?? null,
-          row.state ?? null
+          row.state ?? null,
+          row.createdAt ?? new Date().toISOString()
         ]
       )
 
@@ -113,9 +120,14 @@ export const insertUsers = async (
       const actualUserId = userResult.rows[0]?.id as string
 
       await pool.query(
-        `INSERT INTO loan_cases (id, tenant_id, user_id, partner_case_id, current_stage, loan_amount, firm_name)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         ON CONFLICT (tenant_id, partner_case_id) DO UPDATE SET current_stage = $5, loan_amount = $6, firm_name = $7`,
+        `INSERT INTO loan_cases (id, tenant_id, user_id, partner_case_id, current_stage, loan_amount, firm_name, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         ON CONFLICT (tenant_id, partner_case_id) DO UPDATE SET
+           current_stage = $5,
+           loan_amount = $6,
+           firm_name = $7,
+           created_at = COALESCE($8, loan_cases.created_at),
+           updated_at = NOW()`,
         [
           loanCaseId,
           tenantId,
@@ -123,7 +135,8 @@ export const insertUsers = async (
           row.partnerCaseId,
           row.currentStage,
           row.loanAmount ?? null,
-          row.firmName ?? null
+          row.firmName ?? null,
+          row.createdAt ?? new Date().toISOString()
         ]
       )
 

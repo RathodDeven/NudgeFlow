@@ -68,6 +68,7 @@ const globalIdentity = await readPromptFile('IDENTITY.md')
 const globalWorkflows = await readPromptFile('WORKFLOWS.md')
 const globalConstraints = await readPromptFile('CONSTRAINTS.md')
 const globalSystem = await readPromptFile('SYSTEM.md')
+const globalUtilities = await readPromptFile('UTILITIES.md')
 const universalKnowledge = await readPromptFile('KNOWLEDGE.md')
 
 // Load Tenant Prompts (Deeply Generalized)
@@ -86,7 +87,7 @@ const graph = {
   invoke: async (_state: AgentState): Promise<void> => undefined
 }
 
-const buildSystemPrompt = (_route: string): string => {
+const buildSystemPrompt = (_route: string, utilitiesContext: string): string => {
   const initialOutreachContext = `
 --- INITIAL OUTREACH CONTEXT ---
 If this is the start of the conversation, the user has just received our "Initial Outreach" template.
@@ -105,6 +106,7 @@ The user may be responding with session-specific quick-replies (refer to tenant 
     `--- AGENT IDENTITY ---\n${globalIdentity}\n--- END IDENTITY ---`,
     `--- TENANT PROFILE ---\n${tenantProfile}\n--- END PROFILE ---`,
     `--- SYSTEM RULES ---\n${globalSystem}\n--- END SYSTEM ---`,
+    `--- TIME & CONTEXT UTILITIES ---\n${globalUtilities}\n${utilitiesContext}\n--- END UTILITIES ---`,
     `--- GENERAL WORKFLOWS ---\n${globalWorkflows}\n--- END GENERAL WORKFLOWS ---`,
     `--- TENANT WORKFLOWS ---\n${tenantWorkflows}\n--- END TENANT WORKFLOWS ---`,
     `--- CHANNEL & CONSTRAINTS ---\n${globalConstraints}\n${tenantChannel}\n--- END CHANNEL ---`,
@@ -147,6 +149,16 @@ app.post('/agent/respond', async (request, reply) => {
   const { session, lastInboundMessage, trigger, chatHistory } = parsed.data
   const inboundText = lastInboundMessage?.body ?? ''
 
+  // 1. Detect language EARLY to inform the LLM and setup translation
+  const startLanguageDetection = Date.now()
+  const detectedLanguage = await detectLanguage(inboundText, env.SARVAM_API_KEY, env.SARVAM_BASE_URL)
+  const inboundLanguage = detectedLanguage || 'en-IN'
+  app.log.info({
+    msg: 'Early Language Detection completed',
+    inboundLanguage,
+    timeMs: Date.now() - startLanguageDetection
+  })
+
   let route = 'recovery'
   let isEscalated = false
   let llmText = buildFallbackReply('recovery', 'Please continue your application.', '')
@@ -181,7 +193,7 @@ app.post('/agent/respond', async (request, reply) => {
             })
             .nullable()
             .optional()
-            .describe('Provide if the nudge logic requires a deep-link CTA.')
+            .describe('Provide ONLY if the nudge logic REQUIRES a deep-link CTA to move the loan forward.')
         })
         .describe('The entire payload to issue to the user.')
     })
@@ -194,24 +206,27 @@ app.post('/agent/respond', async (request, reply) => {
         : '(No previous messages)',
       '--------------------',
       `Current Inbound message: ${inboundText || '(none)'}`,
+      `Detected incoming language: ${inboundLanguage || 'en-IN'}`,
       `Session summary: ${JSON.stringify(session.summaryState)}`,
       `Stage: ${session.summaryState.stageContext}`,
       `Exact mobile number: ${session.compactFacts.mobile_number || 'unknown'}`,
-      'Task: Analyze the Chat History above so you do not repeat yourself. Address any specific questions the user asks. Then classify intent, review compliance, and generate a contextual response payload adhering to channel rules.'
+      'Task: Analyze the Chat History above so you do not repeat yourself. Address any specific questions the user asks. Then classify intent, review compliance, and generate a contextual response payload adhering to channel rules. If the incoming language is regional (e.g. Gujarati), the system will translate your response, so keep it direct.'
     ].join('\n')
 
-    const systemPrompt = buildSystemPrompt('recovery') // Use general support/recovery prompt
+    // 2. Compute Contextual Utilities (Current Date, Days Since Applied)
+    const appDateStr = session.compactFacts.application_date
+    const appDate = appDateStr ? new Date(appDateStr) : new Date()
+    const now = new Date()
+    const diffDays = Math.floor((now.getTime() - appDate.getTime()) / (1000 * 60 * 60 * 24))
 
-    app.log.info({
-      msg: '=== Dispatching AI Prompt (Targeted) ===',
-      chatHistory:
-        chatHistory && chatHistory.length > 0
-          ? chatHistory.map(m => `${m.direction === 'inbound' ? 'Customer' : 'Agent'}: ${m.body}`).join('\n')
-          : '(No previous messages)',
-      currentInbound: inboundText || '(none)',
-      stage: session.summaryState.stageContext,
-      isFirstTurn: !chatHistory || chatHistory.length === 0
-    })
+    const utilitiesContext = `
+[Utilities Context]
+- Current Date: ${now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+- Days Since Applied: ${diffDays}
+- Original Application Date: ${appDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+`.trim()
+
+    const systemPrompt = buildSystemPrompt('recovery', utilitiesContext)
 
     const response = await generateStructuredWithOpenAI({
       apiKey: env.OPENAI_API_KEY,
@@ -231,10 +246,32 @@ app.post('/agent/respond', async (request, reply) => {
     llmText = whatsappPayload.body
     usedModel = response.model
 
+    if (env.SARVAM_API_KEY && !['en-IN', 'hi-IN'].includes(inboundLanguage)) {
+      try {
+        const apiKey = env.SARVAM_API_KEY
+        const startTranslation = Date.now()
+        const translation = await import('@nudges/provider-sarvam').then(m =>
+          m.translateWithSarvam({
+            apiKey,
+            sourceText: llmText,
+            targetLanguage: inboundLanguage
+          })
+        )
+        llmText = translation.translatedText
+        app.log.info({
+          msg: 'Sarvam Translation applied',
+          targetLanguage: inboundLanguage,
+          timeMs: Date.now() - startTranslation
+        })
+      } catch (err) {
+        app.log.warn({ msg: 'Sarvam Translation failed, falling back to LLM text', err })
+      }
+    }
+
     if (whatsappPayload.button) {
-      payloadPlainText = `${whatsappPayload.body}\n\n🔗 ${whatsappPayload.button.buttonLabel}: ${whatsappPayload.button.url}\n\n_${footer}_`
+      payloadPlainText = `${llmText}\n\n🔗 ${whatsappPayload.button.buttonLabel}: ${whatsappPayload.button.url}\n\n_${footer}_`
     } else {
-      payloadPlainText = `${whatsappPayload.body}\n\n_${footer}_`
+      payloadPlainText = `${llmText}\n\n_${footer}_`
     }
 
     if (requiresEscalation) {
@@ -251,7 +288,7 @@ app.post('/agent/respond', async (request, reply) => {
   if (isEscalated) {
     return generateReplyOutputSchema.parse({
       body: 'I am connecting you to a human specialist for better assistance.',
-      language: session.summaryState.preferredLanguage ?? 'hinglish',
+      language: inboundLanguage,
       confidence: 0.9,
       usedModel,
       route: 'handoff',
@@ -260,26 +297,22 @@ app.post('/agent/respond', async (request, reply) => {
   }
 
   const guardrail = guardOutboundMessage(llmText)
-  const startSarvam = Date.now()
-  const language = await detectLanguage(inboundText || llmText, env.SARVAM_API_KEY, env.SARVAM_BASE_URL)
-  app.log.info({ msg: 'Sarvam Language Detection completed', timeMs: Date.now() - startSarvam })
 
   // If the guardrail intercepts, we must rebuild the payload
   if (guardrail.sanitizedMessage) {
-    // If it was modified, likely a PII issue, we just replace the body block in the final payload
     payloadPlainText = payloadPlainText.replace(llmText, guardrail.sanitizedMessage)
   }
 
   await graph.invoke({
     route: guardrail.allowed && !isRejected ? (route as AgentState['route']) : 'reject',
     body: payloadPlainText,
-    language,
+    language: inboundLanguage,
     confidence: 0.82
   })
 
   return generateReplyOutputSchema.parse({
     body: payloadPlainText,
-    language,
+    language: inboundLanguage,
     confidence: 0.82,
     usedModel,
     route: guardrail.allowed && !isRejected ? (route as AgentState['route']) : 'reject',

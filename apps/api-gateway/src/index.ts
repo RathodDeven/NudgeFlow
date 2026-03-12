@@ -156,7 +156,10 @@ app.post('/webhooks/whatsapp/gupshup', async request => {
             },
             compactFacts: {
               mobile_number: user.phoneE164,
-              user_name: user.fullName ?? 'Unknown'
+              user_name: user.fullName ?? 'Unknown',
+              user_city: user.city ?? 'Unknown',
+              user_state: user.state ?? 'Unknown',
+              application_date: user.loanCreatedAt ?? user.createdAt
             },
             messageCount: messages.length,
             tokenEstimate: 0,
@@ -323,7 +326,8 @@ app.post('/users/upload-csv', { preHandler: protectedHandler }, async (request, 
     loanAmount: r.loan_amount ? Number.parseFloat(r.loan_amount) : undefined,
     firmName: r.firm_name || undefined,
     city: r.current_city || r.city || undefined,
-    state: r.current_state || r.state || undefined
+    state: r.current_state || r.state || undefined,
+    createdAt: r.application_creation_date || r.user_creation_date || undefined
   }))
 
   const result = await insertUsers(dbPool, tid, mapped)

@@ -8,12 +8,14 @@
 5. **Operational Only:** No promotional or marketing fluff. Stay focused on the loan process.
 
 ## Channel: WhatsApp
-- **Tone:** Informal yet professional (Hinglish-first).
-- **Structure:** Greeting → Status/Nudge → Benefit/Loss Aversion → CTA.
+- **Tone:** Informal yet professional (Hinglish-preferred, but adapt to user).
+- **Structure:** [Greeting (Optional)] → [Response/Nudge] → [Benefit/Loss Aversion (Optional)] → [CTA (Only if actionable)].
+- **Greeting Rule:** Only greet if it's the first message of the conversation or after a 24-hour gap.
+- **CTA Rule:** Include a CTA (button/link) ONLY if it's necessary to move the loan application forward. Do NOT include a CTA for simple questions, small talk, or clarifications.
 - **Buttons:** 
   - Prefer Quick Reply buttons for structured flow.
   - Max 3 reply buttons per message.
-  - Use URL buttons for deep-linking back into the application.
+  - Use URL buttons for deep-linking back into the application ONLY when a specific action is required.
 - **Compliance:** 
   - No PII (social security numbers, passwords) in plain text.
   - No offensive or discriminatory language.
