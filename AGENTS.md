@@ -85,7 +85,7 @@ To **add a new company**, create `tenants/<id>/` with the four required markdown
 - **Agent Generation Flow**: `/agent/respond` → Intent Classification → Checks chat history context → **Generalized Instruction Assembly** (Global `prompts/` + Tenant `tenants/`) → LLM Generation → Outbound Guardrail.
 - **Prompt Assembly**: The agent is purely instruction-driven. It merges global strategic files (IDENTITY, SYSTEM, WORKFLOWS) with tenant contextual overrides (PROFILE, CHANNEL, WORKFLOWS). 
 - **Session Management**: Sessions are **Stateless Conversations**. `api-gateway` sends full chat history from Neon DB (`message_events`) for every request.
-- **Payload & Dispatch**: The LLM natively dictates the final deeply-linked URL and CTA string as part of its strictly formulated `whatsappPayload` JSON block. `api-gateway` saves this response to DB and dispatches it immediately via `apps/channel-whatsapp`.
+- **Payload & Dispatch**: The LLM natively dictates the final deeply-linked URL and CTA string as part of its strictly formulated `whatsappPayload` JSON block. `api-gateway` saves this response to DB, persists structured `agent_decisions` telemetry, and dispatches it immediately via `apps/channel-whatsapp`.
 
 ## Context Update Rule (Required)
 When adding or changing any of the following, update context in the same PR/change set:

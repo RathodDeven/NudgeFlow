@@ -12,6 +12,8 @@
 - `GET /metrics/agent-performance`
 - `GET /dashboard/sessions`
 - `GET /dashboard/events`
+- `GET /admin/sessions/:id/decisions`
+- `GET /admin/users/:id/decisions`
 - `POST /tenants/:id/knowledge/publish`
 
 Auth:

@@ -67,6 +67,27 @@ export type ChatMessage = {
   createdAt: string
 }
 
+export type InsertAgentDecisionInput = {
+  sessionId: string
+  trigger: 'inbound_reply' | 'scheduled_followup' | 'manual_retry'
+  route: 'recovery' | 'support' | 'reject' | 'handoff'
+  confidence: number
+  guardrailNotes: string[]
+  suggestedNextFollowupAt?: string
+  modelName: string
+}
+
+export type AgentDecision = {
+  id: string
+  sessionId: string
+  trigger: string
+  route: string
+  confidence: number
+  guardrailNotes: string[]
+  suggestedNextFollowupAt: string | null
+  modelName: string
+  createdAt: string
+}
 // --- Tenant ---
 
 export const ensureTenant = async (pool: pg.Pool, tenantKey: string): Promise<string> => {
@@ -324,6 +345,83 @@ export const updateAgentActive = async (
     [isAgentActive, sessionId]
   )
   return (result.rowCount ?? 0) > 0
+}
+
+export const insertAgentDecision = async (pool: pg.Pool, input: InsertAgentDecisionInput): Promise<void> => {
+  const id = crypto.randomUUID()
+  await pool.query(
+    `INSERT INTO agent_decisions (
+      id,
+      session_id,
+      trigger,
+      route,
+      confidence,
+      guardrail_notes,
+      suggested_next_followup_at,
+      model_name
+    ) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8)`,
+    [
+      id,
+      input.sessionId,
+      input.trigger,
+      input.route,
+      input.confidence,
+      JSON.stringify(input.guardrailNotes),
+      input.suggestedNextFollowupAt ?? null,
+      input.modelName
+    ]
+  )
+}
+
+export const getSessionAgentDecisions = async (
+  pool: pg.Pool,
+  sessionId: string,
+  limit = 50
+): Promise<AgentDecision[]> => {
+  const result = await pool.query(
+    `SELECT
+      id,
+      session_id AS "sessionId",
+      trigger,
+      route,
+      confidence::float8 AS confidence,
+      guardrail_notes AS "guardrailNotes",
+      suggested_next_followup_at AS "suggestedNextFollowupAt",
+      model_name AS "modelName",
+      created_at AS "createdAt"
+     FROM agent_decisions
+     WHERE session_id = $1
+     ORDER BY created_at DESC
+     LIMIT $2`,
+    [sessionId, limit]
+  )
+  return result.rows as AgentDecision[]
+}
+
+export const getUserAgentDecisions = async (
+  pool: pg.Pool,
+  userId: string,
+  limit = 100
+): Promise<AgentDecision[]> => {
+  const result = await pool.query(
+    `SELECT
+      ad.id,
+      ad.session_id AS "sessionId",
+      ad.trigger,
+      ad.route,
+      ad.confidence::float8 AS confidence,
+      ad.guardrail_notes AS "guardrailNotes",
+      ad.suggested_next_followup_at AS "suggestedNextFollowupAt",
+      ad.model_name AS "modelName",
+      ad.created_at AS "createdAt"
+     FROM agent_decisions ad
+     JOIN conversation_sessions cs ON ad.session_id = cs.id
+     WHERE cs.user_id = $1
+     ORDER BY ad.created_at DESC
+     LIMIT $2`,
+    [userId, limit]
+  )
+  return result.rows as AgentDecision[]
 }
 
 export const closePool = async (): Promise<void> => {

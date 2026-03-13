@@ -9,6 +9,7 @@
 - Channel adapter: `channel-whatsapp` with Gupshup package.
 - Ops UI: `ops-dashboard` is React (Vite) SPA protected by API token auth.
 - Data layer: Postgres (state) + Redis (queues/cache).
+- Agent decision traces are persisted in Postgres (`agent_decisions`) immediately after `agent-runtime` responds and before WhatsApp dispatch, enabling admin timeline inspection APIs in `api-gateway`.
 
 ## Runtime flow
 1. Ingestion receives rows and maps to canonical schema.

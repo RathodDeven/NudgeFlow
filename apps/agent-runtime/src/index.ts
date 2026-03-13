@@ -155,12 +155,18 @@ app.post('/agent/respond', async (request, reply) => {
 
   // Fast-path: Detect Hindi Devanagari locally to skip remote API latency
   let detectedLanguage: string | null = null
-  const isStrictEnglish = /^[a-zA-Z0-9\s.,!?'"()-]+$/.test(inboundText) && !/(kya|loan|bhai|karna|hai|hum|aap|tame|kon|chho|naamu|hu|kem|nathi)/i.test(inboundText)
+  const isStrictEnglish =
+    /^[a-zA-Z0-9\s.,!?'"()-]+$/.test(inboundText) &&
+    !/(kya|loan|bhai|karna|hai|hum|aap|tame|kon|chho|naamu|hu|kem|nathi)/i.test(inboundText)
   const hasDevanagari = /[\u0900-\u097F]/.test(inboundText)
 
   if (inboundText.length < 30 && hasDevanagari && !inboundText.includes('?')) {
     detectedLanguage = 'hi-IN'
-  } else if (inboundText.length < 15 && isStrictEnglish && !/(tame|kon|chho|hai|kya|aap)/i.test(inboundText)) {
+  } else if (
+    inboundText.length < 15 &&
+    isStrictEnglish &&
+    !/(tame|kon|chho|hai|kya|aap)/i.test(inboundText)
+  ) {
     // Only trust fast-path English if it's very short AND doesn't look like Hinglish/Gujarati particles
     detectedLanguage = 'en-IN'
   } else {
@@ -247,13 +253,26 @@ app.post('/agent/respond', async (request, reply) => {
     // 2. Compute Contextual Utilities (Current Date, Days Since Applied)
     const appDateStr = session.compactFacts.application_created_at
     console.log(`[agent-runtime] Received application_created_at: "${appDateStr}"`)
-    const appDate = (appDateStr && !Number.isNaN(Date.parse(String(appDateStr)))) ? new Date(String(appDateStr)) : new Date()
-    console.log(`[agent-runtime] Parsed appDate: ${appDate?.toISOString()} (fallback used: ${!appDateStr || Number.isNaN(Date.parse(String(appDateStr)))})`)
+    const appDate =
+      appDateStr && !Number.isNaN(Date.parse(String(appDateStr))) ? new Date(String(appDateStr)) : new Date()
+    console.log(
+      `[agent-runtime] Parsed appDate: ${appDate?.toISOString()} (fallback used: ${!appDateStr || Number.isNaN(Date.parse(String(appDateStr)))})`
+    )
     const now = new Date()
     const diffDays = Math.floor((now.getTime() - appDate.getTime()) / (1000 * 60 * 60 * 24))
 
     const factsEntries = Object.entries(session.compactFacts)
-      .filter(([key]) => !['mobile_number', 'user_name', 'user_city', 'user_state', 'application_created_at', 'application_updated_at'].includes(key))
+      .filter(
+        ([key]) =>
+          ![
+            'mobile_number',
+            'user_name',
+            'user_city',
+            'user_state',
+            'application_created_at',
+            'application_updated_at'
+          ].includes(key)
+      )
       .map(([key, value]) => `- ${key.replace(/_/g, ' ')}: ${value}`)
       .join('\n')
 
@@ -279,8 +298,14 @@ ${factsEntries}
     const timeOpenAI = Date.now() - startTimeOpenAI
     app.log.info({ msg: 'OpenAI execution completed', timeMs: timeOpenAI })
 
-    const { intent, requiresEscalation, isOutOfScope, isRegionalRequired, regionalResponseStrategy, whatsappPayload } =
-      response.data as z.infer<typeof responseSchema>
+    const {
+      intent,
+      requiresEscalation,
+      isOutOfScope,
+      isRegionalRequired,
+      regionalResponseStrategy,
+      whatsappPayload
+    } = response.data as z.infer<typeof responseSchema>
 
     llmText = whatsappPayload.body
     usedModel = response.model

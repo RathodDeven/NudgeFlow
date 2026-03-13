@@ -39,6 +39,17 @@ CREATE TABLE "message_events" (
 	"language" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
+CREATE TABLE "agent_decisions" (
+	"id" uuid PRIMARY KEY,
+	"session_id" uuid NOT NULL,
+	"trigger" text NOT NULL,
+	"route" text NOT NULL,
+	"confidence" numeric(4, 3) NOT NULL,
+	"guardrail_notes" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"suggested_next_followup_at" timestamp with time zone,
+	"model_name" text NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
 CREATE TABLE "policy_states" (
 	"session_id" uuid PRIMARY KEY,
 	"blocked" boolean DEFAULT false NOT NULL,
@@ -72,6 +83,8 @@ CREATE UNIQUE INDEX "conversation_sessions_pkey" ON "conversation_sessions" ("id
 CREATE UNIQUE INDEX "loan_cases_pkey" ON "loan_cases" ("id");
 CREATE UNIQUE INDEX "loan_cases_tenant_id_partner_case_id_key" ON "loan_cases" ("tenant_id","partner_case_id");
 CREATE UNIQUE INDEX "message_events_pkey" ON "message_events" ("id");
+CREATE UNIQUE INDEX "agent_decisions_pkey" ON "agent_decisions" ("id");
+CREATE INDEX "agent_decisions_session_created_idx" ON "agent_decisions" ("session_id", "created_at" DESC);
 CREATE UNIQUE INDEX "policy_states_pkey" ON "policy_states" ("session_id");
 CREATE UNIQUE INDEX "tenants_key_key" ON "tenants" ("key");
 CREATE UNIQUE INDEX "tenants_pkey" ON "tenants" ("id");
@@ -83,5 +96,6 @@ ALTER TABLE "conversation_sessions" ADD CONSTRAINT "conversation_sessions_user_i
 ALTER TABLE "loan_cases" ADD CONSTRAINT "loan_cases_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id");
 ALTER TABLE "loan_cases" ADD CONSTRAINT "loan_cases_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "user_profiles"("id");
 ALTER TABLE "message_events" ADD CONSTRAINT "message_events_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "conversation_sessions"("id");
+ALTER TABLE "agent_decisions" ADD CONSTRAINT "agent_decisions_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "conversation_sessions"("id") ON DELETE CASCADE;
 ALTER TABLE "policy_states" ADD CONSTRAINT "policy_states_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "conversation_sessions"("id");
 ALTER TABLE "user_profiles" ADD CONSTRAINT "user_profiles_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id");

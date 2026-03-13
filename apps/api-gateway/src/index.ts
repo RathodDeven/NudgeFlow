@@ -4,10 +4,13 @@ import {
   ensureSession,
   ensureTenant,
   getPool,
+  getSessionAgentDecisions,
+  getUserAgentDecisions,
   getUserById,
   getUserByPhoneE164,
   getUserMessages,
   getUserSessionInfo,
+  insertAgentDecision,
   insertUsers,
   listUsers,
   saveMessage,
@@ -140,10 +143,15 @@ app.post('/webhooks/whatsapp/gupshup', async request => {
       const nowStr = new Date().toISOString()
 
       console.log(`[api-gateway] Preparing agent request for user: ${user.fullName} (${user.id})`)
-      console.log(`[api-gateway] applicationCreatedAt: ${user.applicationCreatedAt}, createdAt: ${user.createdAt}`)
-      console.log(`[api-gateway] application_created_at being sent: ${user.applicationCreatedAt ?? user.createdAt}`)
-      console.log(`[api-gateway] compactFacts sample: ${JSON.stringify({ application_created_at: user.applicationCreatedAt ?? user.createdAt })}`)
-
+      console.log(
+        `[api-gateway] applicationCreatedAt: ${user.applicationCreatedAt}, createdAt: ${user.createdAt}`
+      )
+      console.log(
+        `[api-gateway] application_created_at being sent: ${user.applicationCreatedAt ?? user.createdAt}`
+      )
+      console.log(
+        `[api-gateway] compactFacts sample: ${JSON.stringify({ application_created_at: user.applicationCreatedAt ?? user.createdAt })}`
+      )
 
       const agentRes = await fetch('http://localhost:3010/agent/respond', {
         method: 'POST',
@@ -193,6 +201,15 @@ app.post('/webhooks/whatsapp/gupshup', async request => {
       }
 
       const agentData = await agentRes.json()
+      await insertAgentDecision(dbPool, {
+        sessionId,
+        trigger: 'inbound_reply',
+        route: agentData.route,
+        confidence: agentData.confidence,
+        guardrailNotes: Array.isArray(agentData.guardrailNotes) ? agentData.guardrailNotes : [],
+        suggestedNextFollowupAt: agentData.suggestedNextFollowupAt,
+        modelName: agentData.usedModel
+      })
       await saveMessage(dbPool, sessionId, 'outbound', agentData.body, 'whatsapp')
 
       await fetch('http://localhost:3040/whatsapp/send', {
@@ -458,6 +475,24 @@ app.patch('/users/:id/agent-active', { preHandler: protectedHandler }, async (re
   })
 
   return { ok: true, isAgentActive: body.isAgentActive }
+})
+
+app.get('/admin/sessions/:id/decisions', { preHandler: protectedHandler }, async (request, reply) => {
+  const sessionId = (request.params as { id: string }).id
+  const limitRaw = (request.query as { limit?: string }).limit
+  const limit = Math.min(Number(limitRaw ?? 50) || 50, 200)
+
+  const decisions = await getSessionAgentDecisions(dbPool, sessionId, limit)
+  return reply.send({ sessionId, decisions })
+})
+
+app.get('/admin/users/:id/decisions', { preHandler: protectedHandler }, async (request, reply) => {
+  const userId = (request.params as { id: string }).id
+  const limitRaw = (request.query as { limit?: string }).limit
+  const limit = Math.min(Number(limitRaw ?? 100) || 100, 500)
+
+  const decisions = await getUserAgentDecisions(dbPool, userId, limit)
+  return reply.send({ userId, decisions })
 })
 
 app.post('/users/:id/send-whatsapp', { preHandler: protectedHandler }, async (request, reply) => {
