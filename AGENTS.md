@@ -81,11 +81,14 @@ To **add a new company**, create `tenants/<id>/` with the four required markdown
 9. **Database Changes**: Always follow the migration rule in the "Database Management & Migrations" section above.
 
 ## Agent Architecture & User Flow
-- **Inbound Webhook Flow**: User replies on WhatsApp → `apps/api-gateway` (`/webhooks/whatsapp/gupshup`) parses Gupshup body → Maps phone number to `loanCaseId` via DB → Saves inbound message to `message_events` → POSTs chat history to `apps/agent-runtime` (`/agent/respond`).
+- **Inbound Webhook Flow**: User replies on WhatsApp → `apps/api-gateway` (`/webhooks/whatsapp/gupshup`) parses Gupshup body → Maps phone number to `loanCaseId` via DB → Saves inbound message to `message_events` + `interaction_events` → POSTs chat history + call summaries to `apps/agent-runtime` (`/agent/respond`).
 - **Agent Generation Flow**: `/agent/respond` → Intent Classification → Checks chat history context → **Generalized Instruction Assembly** (Global `prompts/` + Tenant `tenants/`) → LLM Generation → Outbound Guardrail.
 - **Prompt Assembly**: The agent is purely instruction-driven. It merges global strategic files (IDENTITY, SYSTEM, WORKFLOWS) with tenant contextual overrides (PROFILE, CHANNEL, WORKFLOWS). 
-- **Session Management**: Sessions are memory-aware. `api-gateway` sends persisted `summary_state`, `compact_facts`, and a bounded recent message window from Neon DB (`message_events`) for every request.
-- **Payload & Dispatch**: The LLM natively dictates the final deeply-linked URL and CTA string as part of its strictly formulated `whatsappPayload` JSON block. `api-gateway` saves this response to DB and dispatches it immediately via `apps/channel-whatsapp`.
+- **Session Management**: Sessions are memory-aware. `api-gateway` sends persisted `summary_state`, `compact_facts`, a bounded recent message window, and recent call summaries from Neon DB for every request.
+- **Payload & Dispatch**: The LLM natively dictates the final deeply-linked URL and CTA string as part of its strictly formulated `whatsappPayload` JSON block. `api-gateway` saves the agent decision to `agent_decisions`, updates memory, and dispatches via `apps/channel-whatsapp`.
+- **Voice Calls**: `api-gateway` schedules Bolna calls directly using `scheduled_at` and tracks them in `scheduled_actions` with call subtypes (`initial`, `follow_up`, `retry`, `status_change`). Agent prompt templates live in `packages/provider-bolna`.
+- **Voice Intake**: Bolna execution payloads are normalized via `@nudges/provider-bolna` before saving `interaction_events` and `call_attempts`.
+- **Call Summaries**: `agent-runtime` exposes `/agent/summarize-call` to produce call summaries and optional next-call times from transcripts.
 
 ## Context Update Rule (Required)
 When adding or changing any of the following, update context in the same PR/change set:

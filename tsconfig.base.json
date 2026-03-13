@@ -21,6 +21,7 @@
       "@nudges/observability": ["packages/observability/src/index.ts"],
       "@nudges/persuasion-core": ["packages/persuasion-core/src/index.ts"],
       "@nudges/provider-openai": ["packages/provider-openai/src/index.ts"],
+      "@nudges/provider-bolna": ["packages/provider-bolna/src/index.ts"],
       "@nudges/provider-sarvam": ["packages/provider-sarvam/src/index.ts"],
       "@nudges/safety-compliance": ["packages/safety-compliance/src/index.ts"],
       "@nudges/session-memory": ["packages/session-memory/src/index.ts"]

@@ -53,6 +53,32 @@ export type DbChatMessage = {
   createdAt: string
 }
 
+export type ScheduledAction = {
+  id: string
+  sessionId: string
+  actionType: string
+  actionSubtype?: string
+  dueAt: string
+  status: string
+  retryCount: number
+  idempotencyKey: string
+  lastError?: string
+  metadata?: Record<string, unknown>
+  createdAt: string
+  updatedAt: string
+}
+
+export type CallAttempt = {
+  id: string
+  sessionId: string
+  interactionEventId: string
+  disposition?: string
+  durationSeconds?: number
+  providerCallId?: string
+  providerTimestamp?: string
+  createdAt: string
+}
+
 export type CsvUser = {
   id: string
   customerId: string

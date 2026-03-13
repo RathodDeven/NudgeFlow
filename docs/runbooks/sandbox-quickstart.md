@@ -94,6 +94,24 @@ To test inbound messages from real WhatsApp users locally:
 5. **Send Message**: Send a message to your Gupshup number.
 6. **Observe**: Check `api-gateway` logs for `Gupshup Webhook Payload Received`. All event types (message, status, system) are logged for inspection.
 
+## 10. Bolna Voice Webhook (Optional)
+
+If you use Bolna for calls, configure its webhook to point at the API gateway:
+- **Callback URL**: `<Tunnel-URL>/webhooks/voice/bolna`
+- **Payload**: Execution data (includes `id`, `status`, `transcript`, `created_at`, `updated_at`, and `telephony_data`).
+
+The webhook will:
+- Map the execution to a user by phone number.
+- Store transcripts and call metadata in `interaction_events` + `call_attempts`.
+- Summarize transcripts via `POST /agent/summarize-call` and persist summary state updates.
+
+For outbound calls, set `BOLNA_API_KEY`, `BOLNA_BASE_URL`, and `BOLNA_AGENT_ID` in `.env`.
+If you want the call to appear from a specific number, set `BOLNA_FROM_NUMBER`.
+
+Scheduling:
+- Calls can be scheduled using Bolna’s `scheduled_at` timestamp. We align calls to the allowed windows (10:00–11:30 / 18:00–21:00 IST) and apply retries within the next hour after `no_answer`/`busy`/`failed`.
+- Agent prompt variables are provided via `user_data` (see `packages/provider-bolna/src/agent-templates.ts`).
+
 ## Service Ports
 
 | Service | Port | Purpose |

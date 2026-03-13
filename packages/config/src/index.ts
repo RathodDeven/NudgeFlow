@@ -12,6 +12,10 @@ const envSchema = z.object({
   OPENAI_MODEL_COMPLEX: z.string().default('gpt-5-mini-2025-08-07'),
   SARVAM_API_KEY: z.string().optional(),
   SARVAM_BASE_URL: z.string().default('https://api.sarvam.ai'),
+  BOLNA_API_KEY: z.string().optional(),
+  BOLNA_BASE_URL: z.string().default('https://api.bolna.ai'),
+  BOLNA_AGENT_ID: z.string().optional(),
+  BOLNA_FROM_NUMBER: z.string().optional(),
   GUPSHUP_API_KEY: z.string().optional(),
   GUPSHUP_APP_NAME: z.string().optional(),
   GUPSHUP_BASE_URL: z.string().default('https://api.gupshup.io'),
@@ -24,7 +28,8 @@ const envSchema = z.object({
   CONTACT_START_HOUR: z.coerce.number().default(8),
   CONTACT_END_HOUR: z.coerce.number().default(19),
   MAX_ATTEMPTS: z.coerce.number().default(3),
-  FOLLOWUP_WINDOW_DAYS: z.coerce.number().default(7)
+  FOLLOWUP_WINDOW_DAYS: z.coerce.number().default(7),
+  COOLDOWN_HOURS: z.coerce.number().default(24)
 })
 
 export type AppEnv = z.infer<typeof envSchema>

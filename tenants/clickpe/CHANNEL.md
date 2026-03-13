@@ -4,6 +4,7 @@
 
 ### Template: Initial Outreach
 - **Template ID:** `567063dd-09e1-46f1-92a8-dd7f94bea415`
+- **Template Variables (ordered):** `user_name, loan_amount, pending_step`
 - **Body:** "Namaste {{1}}! 🙏\n\nAapka ₹{{2}} ka business loan offer expire hone wala hai. ⏳\n\nSirf 1 aakhri step bacha hai: Please upload your {{3}}.\n\nAapne pehle hi process start kar diya hai, ise miss mat kijiye. Ye funds aapke business growth ke liye block kiye gaye hain.\n\nNeeche diye button par click karein aur 2 minute mein process poora karein. 👇"
 - **Buttons:**
   1. URL: `Claim Reserved Funds` (URL suffix: `mobile_number`)

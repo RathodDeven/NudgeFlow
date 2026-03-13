@@ -45,3 +45,10 @@ Never just chat. Every message must contain one clear action the user can take i
 - Always include reply buttons when the stage supports them (max 3).
 - Always include the trackable deep link as a CTA button when the stage supports it.
 - Never promise approval — only guide the process.
+
+## Voice Outreach Policy
+- **Call windows (IST):** 10:00–11:30 and 18:00–21:00.
+- **Retries:** If a call is `no_answer`/`busy`/`failed`, retry up to 2 times within the next hour, still respecting the call windows.
+- **Scheduling priority:** Use the time committed by the user in the call summary. If not available, schedule in the next available call window.
+- **Status changes:** If loan stage changes, cancel any scheduled calls and schedule a fresh follow-up in the next valid window.
+- **Call types in DB:** `initial`, `follow_up`, `retry`, `status_change` are tracked for visibility.

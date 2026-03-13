@@ -153,6 +153,17 @@ To test incoming WhatsApp messages locally, you need a tunnel to your port 3000.
 - **Local (via ngrok)**: `https://<your-ngrok-subdomain>.ngrok-free.app/webhooks/whatsapp/gupshup`
 - **Production**: `https://api.nudgeflow.io/webhooks/whatsapp/gupshup` (Replace with your actual domain)
 
+### Bolna Voice (Optional)
+Bolna’s execution payloads include fields like `id`, `status`, `transcript`, `created_at`, `updated_at`, and `telephony_data` with `duration`, `to_number`, `from_number`, `provider_call_id`, and `call_type`.  
+Set your Bolna webhook to `POST /webhooks/voice/bolna` so execution payloads are ingested and saved to `interaction_events` and `call_attempts`.
+
+Bolna API calls require an API key passed as `Authorization: Bearer <api_key>`. Calls are created with `agent_id` and `recipient_phone_number`, can be scheduled via `scheduled_at`, and can pass `user_data` for prompt variables. The agent’s welcome message and prompt templates live in `packages/provider-bolna/src/agent-templates.ts` and use variable placeholders that map to `user_data`.
+
+Implemented:
+- Outbound call initiation to Bolna with session context (`user_data`).
+- Automatic summarization of call transcripts for agent inference.
+- Follow-up scheduling based on call summary `suggestedNextCallAt` plus retry policy windows.
+
 ### Database Schema & Migrations
 - **Master Schema**: [`packages/db/schema/schema.sql`](packages/db/schema/schema.sql)
 - **Migrations**: [`packages/db/migrations/`](packages/db/migrations/)
@@ -189,6 +200,10 @@ Only needed when connecting to live APIs:
 | `OPENAI_MODEL_COMPLEX` | OpenAI | Default `gpt-5-mini-2025-08-07` (complaints, escalations) |
 | `SARVAM_API_KEY` | Sarvam AI | Required for real language detection. Without it, heuristic regex is used. |
 | `SARVAM_BASE_URL` | Sarvam AI | Default `https://api.sarvam.ai` |
+| `BOLNA_API_KEY` | Bolna | Required for API calls (outbound calls, execution fetch). |
+| `BOLNA_BASE_URL` | Bolna | Default `https://api.bolna.ai` |
+| `BOLNA_AGENT_ID` | Bolna | Agent used for outbound calls |
+| `BOLNA_FROM_NUMBER` | Bolna | Optional caller ID for outbound calls |
 | `GUPSHUP_API_KEY` | Gupshup | Required to send real WhatsApp messages |
 | `GUPSHUP_APP_NAME` | Gupshup | WhatsApp source app name |
 | `GUPSHUP_BASE_URL` | Gupshup | Default `https://api.gupshup.io` |

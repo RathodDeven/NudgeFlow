@@ -1,5 +1,5 @@
 import { isWithinContactWindow } from '@nudges/config'
-import type { ConversationSession } from '@nudges/domain'
+export { evaluateOutreachPolicy, type PolicyEvaluationInput, type PolicyEvaluationResult } from './policy'
 
 export type GuardrailResult = {
   allowed: boolean
