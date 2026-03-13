@@ -19,3 +19,5 @@
 6. Inbound updates memory and next scheduling decision.
 7. Human handoff toggles session state and pauses agent actions.
 8. Ops dashboard authenticates via `api-gateway` token endpoints before loading protected metrics/sessions/events.
+
+- Session memory uses persisted summary + compact facts with a bounded recent message window.

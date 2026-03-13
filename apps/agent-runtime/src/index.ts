@@ -3,7 +3,12 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import fastifyCors from '@fastify/cors'
 import { loadEnv } from '@nudges/config'
-import { generateReplyInputSchema, generateReplyOutputSchema } from '@nudges/domain'
+import {
+  MEMORY_PROMPT_CHAR_CAP,
+  MEMORY_PROMPT_MESSAGE_CAP,
+  generateReplyInputSchema,
+  generateReplyOutputSchema
+} from '@nudges/domain'
 import { generateStructuredWithOpenAI } from '@nudges/provider-openai'
 import { detectLanguage, generateChatWithSarvam } from '@nudges/provider-sarvam'
 import { guardOutboundMessage } from '@nudges/safety-compliance'
@@ -87,6 +92,29 @@ const graph = {
   invoke: async (_state: AgentState): Promise<void> => undefined
 }
 
+const capRecentHistory = (chatHistory: { direction: 'inbound' | 'outbound'; body: string }[] | undefined) => {
+  const bounded = (chatHistory ?? []).slice(-MEMORY_PROMPT_MESSAGE_CAP)
+  const capped: { direction: 'inbound' | 'outbound'; body: string }[] = []
+  let totalChars = 0
+
+  for (let i = bounded.length - 1; i >= 0; i--) {
+    const turn = bounded[i]
+    totalChars += turn.body.length
+    if (totalChars > MEMORY_PROMPT_CHAR_CAP) break
+    capped.unshift(turn)
+  }
+
+  return capped
+}
+
+const buildHistoryBlock = (chatHistory: { direction: 'inbound' | 'outbound'; body: string }[]): string => {
+  if (chatHistory.length === 0) {
+    return '(No previous messages)'
+  }
+
+  return chatHistory.map(m => `${m.direction === 'inbound' ? 'Customer' : 'Agent'}: ${m.body}`).join('\n')
+}
+
 const buildSystemPrompt = (_route: string, utilitiesContext: string): string => {
   const initialOutreachContext = `
 --- INITIAL OUTREACH CONTEXT ---
@@ -148,6 +176,7 @@ app.post('/agent/respond', async (request, reply) => {
   }
 
   const { session, lastInboundMessage, trigger, chatHistory } = parsed.data
+  const boundedHistory = capRecentHistory(chatHistory)
   const inboundText = lastInboundMessage?.body ?? ''
 
   // 1. Detect language EARLY to inform the LLM and setup translation
@@ -155,12 +184,18 @@ app.post('/agent/respond', async (request, reply) => {
 
   // Fast-path: Detect Hindi Devanagari locally to skip remote API latency
   let detectedLanguage: string | null = null
-  const isStrictEnglish = /^[a-zA-Z0-9\s.,!?'"()-]+$/.test(inboundText) && !/(kya|loan|bhai|karna|hai|hum|aap|tame|kon|chho|naamu|hu|kem|nathi)/i.test(inboundText)
+  const isStrictEnglish =
+    /^[a-zA-Z0-9\s.,!?'"()-]+$/.test(inboundText) &&
+    !/(kya|loan|bhai|karna|hai|hum|aap|tame|kon|chho|naamu|hu|kem|nathi)/i.test(inboundText)
   const hasDevanagari = /[\u0900-\u097F]/.test(inboundText)
 
   if (inboundText.length < 30 && hasDevanagari && !inboundText.includes('?')) {
     detectedLanguage = 'hi-IN'
-  } else if (inboundText.length < 15 && isStrictEnglish && !/(tame|kon|chho|hai|kya|aap)/i.test(inboundText)) {
+  } else if (
+    inboundText.length < 15 &&
+    isStrictEnglish &&
+    !/(tame|kon|chho|hai|kya|aap)/i.test(inboundText)
+  ) {
     // Only trust fast-path English if it's very short AND doesn't look like Hinglish/Gujarati particles
     detectedLanguage = 'en-IN'
   } else {
@@ -232,13 +267,12 @@ app.post('/agent/respond', async (request, reply) => {
     const startTimeOpenAI = Date.now()
     const renderedUserPrompt = [
       '--- Chat History ---',
-      chatHistory && chatHistory.length > 0
-        ? chatHistory.map(m => `${m.direction === 'inbound' ? 'Customer' : 'Agent'}: ${m.body}`).join('\n')
-        : '(No previous messages)',
+      buildHistoryBlock(boundedHistory),
       '--------------------',
       `Current Inbound message: ${inboundText || '(none)'}`,
       `Detected incoming language: ${inboundLanguage || 'en-IN'}`,
-      `Session summary: ${JSON.stringify(session.summaryState)}`,
+      `Persisted summary state: ${JSON.stringify(session.summaryState)}`,
+      `Compact facts: ${JSON.stringify(session.compactFacts)}`,
       `Stage: ${session.summaryState.stageContext}`,
       `Exact mobile number: ${session.compactFacts.mobile_number || 'unknown'}`,
       'Task: 1. Review the "Chat History" to understand exactly what was just said. 2. If the user asks a meta-question (e.g., "What was our last topic?", "What did you say?"), answer it based ONLY on the history. 3. Address any specific support questions concisely. 4. Classify intent and generate a contextual response. Do not repeat introductions if already done.'
@@ -247,13 +281,26 @@ app.post('/agent/respond', async (request, reply) => {
     // 2. Compute Contextual Utilities (Current Date, Days Since Applied)
     const appDateStr = session.compactFacts.application_created_at
     console.log(`[agent-runtime] Received application_created_at: "${appDateStr}"`)
-    const appDate = (appDateStr && !Number.isNaN(Date.parse(String(appDateStr)))) ? new Date(String(appDateStr)) : new Date()
-    console.log(`[agent-runtime] Parsed appDate: ${appDate?.toISOString()} (fallback used: ${!appDateStr || Number.isNaN(Date.parse(String(appDateStr)))})`)
+    const appDate =
+      appDateStr && !Number.isNaN(Date.parse(String(appDateStr))) ? new Date(String(appDateStr)) : new Date()
+    console.log(
+      `[agent-runtime] Parsed appDate: ${appDate?.toISOString()} (fallback used: ${!appDateStr || Number.isNaN(Date.parse(String(appDateStr)))})`
+    )
     const now = new Date()
     const diffDays = Math.floor((now.getTime() - appDate.getTime()) / (1000 * 60 * 60 * 24))
 
     const factsEntries = Object.entries(session.compactFacts)
-      .filter(([key]) => !['mobile_number', 'user_name', 'user_city', 'user_state', 'application_created_at', 'application_updated_at'].includes(key))
+      .filter(
+        ([key]) =>
+          ![
+            'mobile_number',
+            'user_name',
+            'user_city',
+            'user_state',
+            'application_created_at',
+            'application_updated_at'
+          ].includes(key)
+      )
       .map(([key, value]) => `- ${key.replace(/_/g, ' ')}: ${value}`)
       .join('\n')
 
@@ -279,8 +326,14 @@ ${factsEntries}
     const timeOpenAI = Date.now() - startTimeOpenAI
     app.log.info({ msg: 'OpenAI execution completed', timeMs: timeOpenAI })
 
-    const { intent, requiresEscalation, isOutOfScope, isRegionalRequired, regionalResponseStrategy, whatsappPayload } =
-      response.data as z.infer<typeof responseSchema>
+    const {
+      intent,
+      requiresEscalation,
+      isOutOfScope,
+      isRegionalRequired,
+      regionalResponseStrategy,
+      whatsappPayload
+    } = response.data as z.infer<typeof responseSchema>
 
     llmText = whatsappPayload.body
     usedModel = response.model

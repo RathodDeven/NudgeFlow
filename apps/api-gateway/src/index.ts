@@ -4,6 +4,8 @@ import {
   ensureSession,
   ensureTenant,
   getPool,
+  getSessionMemoryState,
+  getSessionRecentMessages,
   getUserById,
   getUserByPhoneE164,
   getUserMessages,
@@ -15,6 +17,7 @@ import {
   updateUserStage
 } from '@nudges/db'
 import {
+  MEMORY_WINDOW_MESSAGES,
   handoffRequestSchema,
   ingestExcelRequestSchema,
   metricsResponseSchema,
@@ -46,12 +49,14 @@ const TENANT_KEY = process.env.TENANT_ID ?? 'clickpe'
 let tenantUUID: string | null = null
 
 const getTenantId = async (): Promise<string> => {
-  if (!tenantUUID) {
-    const resolved = await ensureTenant(dbPool, TENANT_KEY)
-    tenantUUID = resolved
-    console.info(`[api-gateway] Tenant '${TENANT_KEY}' → ${tenantUUID}`)
+  if (tenantUUID) {
+    return tenantUUID
   }
-  return tenantUUID
+
+  const resolved = await ensureTenant(dbPool, TENANT_KEY)
+  tenantUUID = resolved
+  console.info(`[api-gateway] Tenant '${TENANT_KEY}' → ${tenantUUID}`)
+  return resolved
 }
 
 app.get('/health', async () => ({ ok: true, service: 'api-gateway' }))
@@ -136,14 +141,31 @@ app.post('/webhooks/whatsapp/gupshup', async request => {
         return
       }
 
-      const messages = await getUserMessages(dbPool, user.id)
+      const recentMessages = await getSessionRecentMessages(dbPool, sessionId, MEMORY_WINDOW_MESSAGES)
+      const memoryState = await getSessionMemoryState(dbPool, sessionId)
       const nowStr = new Date().toISOString()
-
-      console.log(`[api-gateway] Preparing agent request for user: ${user.fullName} (${user.id})`)
-      console.log(`[api-gateway] applicationCreatedAt: ${user.applicationCreatedAt}, createdAt: ${user.createdAt}`)
-      console.log(`[api-gateway] application_created_at being sent: ${user.applicationCreatedAt ?? user.createdAt}`)
-      console.log(`[api-gateway] compactFacts sample: ${JSON.stringify({ application_created_at: user.applicationCreatedAt ?? user.createdAt })}`)
-
+      const summaryState = (memoryState?.summaryState ?? {
+        sessionIntent: 'recovery',
+        userObjections: [],
+        stageContext: user.currentStage ?? 'fresh_loan',
+        persuasionPath: 'default',
+        commitments: [],
+        nextAction: 'continue',
+        preferredLanguage: 'hinglish'
+      }) as Record<string, unknown>
+      const compactFacts = {
+        mobile_number: user.phoneE164,
+        user_name: user.fullName ?? 'Unknown',
+        user_city: user.city ?? 'Unknown',
+        user_state: user.state ?? 'Unknown',
+        application_created_at: user.applicationCreatedAt ?? user.createdAt,
+        application_updated_at: user.applicationUpdatedAt ?? user.createdAt,
+        loan_amount: user.loanAmount ?? 'Unknown',
+        partner_case_id: user.partnerCaseId ?? 'Unknown',
+        is_reactivated: user.isReactivated ?? false,
+        ...(memoryState?.compactFacts ?? {}),
+        ...(user.metadata as Record<string, unknown>)
+      }
 
       const agentRes = await fetch('http://localhost:3010/agent/respond', {
         method: 'POST',
@@ -156,34 +178,15 @@ app.post('/webhooks/whatsapp/gupshup', async request => {
             loanCaseId: user.loanCaseId ?? crypto.randomUUID(),
             isAgentActive: true,
             channel: 'whatsapp',
-            summaryState: {
-              sessionIntent: 'recovery',
-              userObjections: [],
-              stageContext: user.currentStage ?? 'fresh_loan',
-              persuasionPath: 'default',
-              commitments: [],
-              nextAction: 'continue',
-              preferredLanguage: 'hinglish'
-            },
-            compactFacts: {
-              mobile_number: user.phoneE164,
-              user_name: user.fullName ?? 'Unknown',
-              user_city: user.city ?? 'Unknown',
-              user_state: user.state ?? 'Unknown',
-              application_created_at: user.applicationCreatedAt ?? user.createdAt,
-              application_updated_at: user.applicationUpdatedAt ?? user.createdAt,
-              loan_amount: user.loanAmount ?? 'Unknown',
-              partner_case_id: user.partnerCaseId ?? 'Unknown',
-              is_reactivated: user.isReactivated ?? false,
-              ...(user.metadata as Record<string, unknown>)
-            },
-            messageCount: messages.length,
+            summaryState,
+            compactFacts,
+            messageCount: recentMessages.length,
             tokenEstimate: 0,
             createdAt: nowStr,
             updatedAt: nowStr
           },
-          lastInboundMessage: messages[messages.length - 1],
-          chatHistory: messages,
+          lastInboundMessage: recentMessages[recentMessages.length - 1],
+          chatHistory: recentMessages,
           trigger: 'inbound_reply'
         })
       })

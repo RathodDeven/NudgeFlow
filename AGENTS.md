@@ -84,7 +84,7 @@ To **add a new company**, create `tenants/<id>/` with the four required markdown
 - **Inbound Webhook Flow**: User replies on WhatsApp → `apps/api-gateway` (`/webhooks/whatsapp/gupshup`) parses Gupshup body → Maps phone number to `loanCaseId` via DB → Saves inbound message to `message_events` → POSTs chat history to `apps/agent-runtime` (`/agent/respond`).
 - **Agent Generation Flow**: `/agent/respond` → Intent Classification → Checks chat history context → **Generalized Instruction Assembly** (Global `prompts/` + Tenant `tenants/`) → LLM Generation → Outbound Guardrail.
 - **Prompt Assembly**: The agent is purely instruction-driven. It merges global strategic files (IDENTITY, SYSTEM, WORKFLOWS) with tenant contextual overrides (PROFILE, CHANNEL, WORKFLOWS). 
-- **Session Management**: Sessions are **Stateless Conversations**. `api-gateway` sends full chat history from Neon DB (`message_events`) for every request.
+- **Session Management**: Sessions are memory-aware. `api-gateway` sends persisted `summary_state`, `compact_facts`, and a bounded recent message window from Neon DB (`message_events`) for every request.
 - **Payload & Dispatch**: The LLM natively dictates the final deeply-linked URL and CTA string as part of its strictly formulated `whatsappPayload` JSON block. `api-gateway` saves this response to DB and dispatches it immediately via `apps/channel-whatsapp`.
 
 ## Context Update Rule (Required)
