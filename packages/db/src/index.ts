@@ -296,6 +296,11 @@ export type UserSessionInfo = {
   isAgentActive: boolean
 }
 
+export type SessionMemoryState = {
+  summaryState: Record<string, unknown>
+  compactFacts: Record<string, unknown>
+}
+
 export const getUserSessionInfo = async (
   pool: pg.Pool,
   userId: string,
@@ -310,6 +315,51 @@ export const getUserSessionInfo = async (
   )
   if (result.rows.length === 0) return null
   return result.rows[0] as UserSessionInfo
+}
+
+export const getSessionMemoryState = async (
+  pool: pg.Pool,
+  sessionId: string
+): Promise<SessionMemoryState | null> => {
+  const result = await pool.query(
+    `SELECT
+       summary_state AS "summaryState",
+       compact_facts AS "compactFacts"
+     FROM conversation_sessions
+     WHERE id = $1
+     LIMIT 1`,
+    [sessionId]
+  )
+
+  if (result.rows.length === 0) return null
+  return result.rows[0] as SessionMemoryState
+}
+
+export const getSessionRecentMessages = async (
+  pool: pg.Pool,
+  sessionId: string,
+  limit: number
+): Promise<ChatMessage[]> => {
+  const result = await pool.query(
+    `SELECT id, "sessionId", channel, direction, body, "createdAt"
+     FROM (
+       SELECT
+         me.id,
+         me.session_id AS "sessionId",
+         me.channel,
+         me.direction,
+         me.body,
+         me.created_at AS "createdAt"
+       FROM message_events me
+       WHERE me.session_id = $1
+       ORDER BY me.created_at DESC
+       LIMIT $2
+     ) recent
+     ORDER BY "createdAt" ASC`,
+    [sessionId, Math.max(1, Math.trunc(limit))]
+  )
+
+  return result.rows as ChatMessage[]
 }
 
 export const updateAgentActive = async (
