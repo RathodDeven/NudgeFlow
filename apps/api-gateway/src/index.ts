@@ -59,6 +59,20 @@ const getTenantId = async (): Promise<string> => {
   return resolved
 }
 
+const hasRequiredSummaryKeys = (value: unknown): value is Record<string, unknown> => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const summary = value as Record<string, unknown>
+  return (
+    typeof summary.sessionIntent === 'string' &&
+    typeof summary.stageContext === 'string' &&
+    typeof summary.persuasionPath === 'string' &&
+    typeof summary.nextAction === 'string' &&
+    typeof summary.preferredLanguage === 'string' &&
+    Array.isArray(summary.userObjections) &&
+    Array.isArray(summary.commitments)
+  )
+}
+
 app.get('/health', async () => ({ ok: true, service: 'api-gateway' }))
 
 app.post('/auth/login', async (request, reply) => {
@@ -144,7 +158,7 @@ app.post('/webhooks/whatsapp/gupshup', async request => {
       const recentMessages = await getSessionRecentMessages(dbPool, sessionId, MEMORY_WINDOW_MESSAGES)
       const memoryState = await getSessionMemoryState(dbPool, sessionId)
       const nowStr = new Date().toISOString()
-      const summaryState = (memoryState?.summaryState ?? {
+      const fallbackSummaryState = {
         sessionIntent: 'recovery',
         userObjections: [],
         stageContext: user.currentStage ?? 'fresh_loan',
@@ -152,7 +166,10 @@ app.post('/webhooks/whatsapp/gupshup', async request => {
         commitments: [],
         nextAction: 'continue',
         preferredLanguage: 'hinglish'
-      }) as Record<string, unknown>
+      }
+      const summaryState = hasRequiredSummaryKeys(memoryState?.summaryState)
+        ? memoryState.summaryState
+        : fallbackSummaryState
       const compactFacts = {
         mobile_number: user.phoneE164,
         user_name: user.fullName ?? 'Unknown',
