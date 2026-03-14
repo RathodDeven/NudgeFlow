@@ -159,6 +159,15 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
       'suggested_next_call_at',
       'last_call_summary',
       'notes_for_agent',
+      'blocker_type',
+      'intent_class',
+      'user_sentiment',
+      'pending_doc_type',
+      'callback_time_iso',
+      'intent_confidence',
+      'call_summary_short',
+      'callback_preference',
+      'promised_completion_time_iso',
       'extracted_data_json',
       'context_details_json',
       'bolna_execution_id',
@@ -169,6 +178,22 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
     const lines = [headers.join(',')]
     for (const row of rows) {
       const inferred = row.inferred ?? {}
+      const extracted =
+        inferred.extracted_data &&
+        typeof inferred.extracted_data === 'object' &&
+        !Array.isArray(inferred.extracted_data)
+          ? (inferred.extracted_data as Record<string, unknown>)
+          : {}
+
+      const normalizedAnalyticsValue = (value: unknown): unknown => {
+        if (typeof value === 'string') {
+          return value.trim().length > 0 ? value : ''
+        }
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+          return Object.keys(value).length === 0 ? '' : value
+        }
+        return value ?? ''
+      }
 
       lines.push(
         [
@@ -190,7 +215,16 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
           inferred.last_call_at,
           inferred.suggested_next_call_at,
           inferred.last_call_summary,
-          inferred.notes_for_agent,
+          normalizedAnalyticsValue(extracted.notes_for_agent ?? inferred.notes_for_agent),
+          normalizedAnalyticsValue(extracted.blocker_type),
+          normalizedAnalyticsValue(extracted.intent_class ?? inferred.inferred_intent),
+          normalizedAnalyticsValue(extracted.user_sentiment),
+          normalizedAnalyticsValue(extracted.pending_doc_type),
+          normalizedAnalyticsValue(extracted.callback_time_iso ?? inferred.suggested_next_call_at),
+          normalizedAnalyticsValue(extracted.intent_confidence),
+          normalizedAnalyticsValue(extracted.call_summary_short),
+          normalizedAnalyticsValue(extracted.callback_preference),
+          normalizedAnalyticsValue(extracted.promised_completion_time_iso),
           inferred.extracted_data,
           inferred.context_details,
           inferred.bolna_execution_id,
