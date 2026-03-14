@@ -25,6 +25,7 @@ export function App() {
   const [untouchedCount, setUntouchedCount] = useState<number>(0)
   const [isBatchStarting, setIsBatchStarting] = useState<boolean>(false)
   const [isExportingCsv, setIsExportingCsv] = useState<boolean>(false)
+  const [scheduleAtLocal, setScheduleAtLocal] = useState<string>('')
   const [dataError, setDataError] = useState<string>('')
   const [selectedUser, setSelectedUser] = useState<CsvUser | null>(null)
 
@@ -143,20 +144,46 @@ export function App() {
 
   const handleBatchStartUntouched = async (): Promise<void> => {
     if (!token || isBatchStarting) return
+    const proceed = window.confirm(`Run Bolna batch now for ${untouchedCount} untouched users?`)
+    if (!proceed) return
+
+    setIsBatchStarting(true)
+    setDataError('')
+    try {
+      const res = await startUntouchedBatch(token, { runMode: 'run_now' })
+      const message = res.batchError
+        ? `Batch request failed: ${res.batchError}`
+        : `Batch ${res.batch?.batchId ?? 'created'} ${res.batch?.state ?? 'scheduled'} (${res.batch?.csvRows ?? 0} rows)`
+      setDataError(message)
+      await loadDashboard(token)
+    } catch (error) {
+      setDataError(`Batch start failed: ${(error as Error).message}`)
+    } finally {
+      setIsBatchStarting(false)
+      setTimeout(() => setDataError(''), 6000)
+    }
+  }
+
+  const handleBatchScheduleUntouched = async (): Promise<void> => {
+    if (!token || isBatchStarting || !scheduleAtLocal) return
+
+    const scheduledAtIso = new Date(scheduleAtLocal).toISOString()
     const proceed = window.confirm(
-      `Start outreach for ${untouchedCount} untouched users? This sends WhatsApp template and schedules calls.`
+      `Schedule Bolna batch for ${untouchedCount} untouched users at ${new Date(scheduledAtIso).toLocaleString()}?`
     )
     if (!proceed) return
 
     setIsBatchStarting(true)
     setDataError('')
     try {
-      const res = await startUntouchedBatch(token)
-      const message = `Batch complete: triggered ${res.triggered}/${res.total}, failed ${res.failed}`
+      const res = await startUntouchedBatch(token, { runMode: 'schedule', scheduledAt: scheduledAtIso })
+      const message = res.batchError
+        ? `Batch schedule failed: ${res.batchError}`
+        : `Batch ${res.batch?.batchId ?? 'created'} scheduled at ${res.batch?.scheduledAt ?? scheduledAtIso}`
       setDataError(message)
       await loadDashboard(token)
     } catch (error) {
-      setDataError(`Batch start failed: ${(error as Error).message}`)
+      setDataError(`Batch schedule failed: ${(error as Error).message}`)
     } finally {
       setIsBatchStarting(false)
       setTimeout(() => setDataError(''), 6000)
@@ -308,7 +335,10 @@ export function App() {
             untouchedCount={untouchedCount}
             isBatchStarting={isBatchStarting}
             isExportingCsv={isExportingCsv}
-            onBatchStartUntouched={handleBatchStartUntouched}
+            scheduleAtLocal={scheduleAtLocal}
+            onScheduleAtLocalChange={setScheduleAtLocal}
+            onBatchRunNowUntouched={handleBatchStartUntouched}
+            onBatchScheduleUntouched={handleBatchScheduleUntouched}
             onExportInferredCsv={handleExportInferredCsv}
           />
         )}

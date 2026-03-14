@@ -111,4 +111,12 @@ export type BatchStartUntouchedResponse = {
   triggered: number
   failed: number
   errors: Array<{ userId: string; reason: string }>
+  runMode: 'run_now' | 'schedule'
+  batch: {
+    batchId: string
+    state: string
+    scheduledAt: string
+    csvRows: number
+  } | null
+  batchError: string | null
 }

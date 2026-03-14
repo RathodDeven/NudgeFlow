@@ -22,7 +22,10 @@ interface DashboardTabProps {
   untouchedCount: number
   isBatchStarting: boolean
   isExportingCsv: boolean
-  onBatchStartUntouched: () => void
+  scheduleAtLocal: string
+  onScheduleAtLocalChange: (value: string) => void
+  onBatchRunNowUntouched: () => void
+  onBatchScheduleUntouched: () => void
   onExportInferredCsv: (filters?: { intent?: string; highIntent?: string }) => void
 }
 
@@ -41,7 +44,10 @@ export function DashboardTab({
   untouchedCount,
   isBatchStarting,
   isExportingCsv,
-  onBatchStartUntouched,
+  scheduleAtLocal,
+  onScheduleAtLocalChange,
+  onBatchRunNowUntouched,
+  onBatchScheduleUntouched,
   onExportInferredCsv
 }: DashboardTabProps) {
   const callQueue = pendingTasks.filter(t => t.callPriority && t.callPriority !== 'none')
@@ -101,13 +107,27 @@ export function DashboardTab({
             </select>
             <button
               type="button"
-              onClick={onBatchStartUntouched}
+              onClick={onBatchRunNowUntouched}
               disabled={isBatchStarting || untouchedCount === 0}
               title={
                 untouchedCount === 0 ? 'No untouched users available' : 'Start outreach for untouched users'
               }
             >
-              {isBatchStarting ? 'Starting Batch...' : 'Start Batch for Untouched Users'}
+              {isBatchStarting ? 'Starting Batch...' : 'Run Now (Untouched)'}
+            </button>
+            <input
+              type="datetime-local"
+              value={scheduleAtLocal}
+              onChange={e => onScheduleAtLocalChange(e.target.value)}
+              aria-label="Batch schedule date time"
+            />
+            <button
+              type="button"
+              className="secondary"
+              onClick={onBatchScheduleUntouched}
+              disabled={isBatchStarting || untouchedCount === 0 || !scheduleAtLocal}
+            >
+              {isBatchStarting ? 'Scheduling...' : 'Schedule Batch (Untouched)'}
             </button>
             <button
               type="button"

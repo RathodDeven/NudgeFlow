@@ -1,4 +1,5 @@
 import {
+  type DbUser,
   countUntouchedUsers,
   ensureSession,
   getSessionContext,
@@ -8,7 +9,8 @@ import {
   listUntouchedUsers
 } from '@nudges/db'
 import type { FastifyInstance } from 'fastify'
-import { dbPool, getTenantId, protectedHandler } from '../context'
+import { dbPool, env, getTenantId, protectedHandler } from '../context'
+import { createAndScheduleBolnaBatch } from '../services/bolna-batch'
 import { recordMessageInteraction } from '../services/interactions'
 import { applyMessageMemoryUpdate } from '../services/memory'
 import { loadTenantTemplateConfig } from '../services/tenant-channel'
@@ -19,8 +21,9 @@ import { eventLogger } from '../state'
 const startConversationForUser = async (params: {
   userId: string
   preferredCallAt?: string
+  skipVoiceCall?: boolean
 }): Promise<void> => {
-  const { userId, preferredCallAt } = params
+  const { userId, preferredCallAt, skipVoiceCall = false } = params
 
   const user = await getUserById(dbPool, userId)
   if (!user) {
@@ -62,13 +65,36 @@ const startConversationForUser = async (params: {
     await applyMessageMemoryUpdate(dbPool, sessionId, `Template ${templateConfig.templateId} sent`)
   }
 
-  if (session) {
+  if (!skipVoiceCall && session) {
     await scheduleVoiceCall(dbPool, {
       session,
       callReason: 'initial',
       requestedAt: preferredCallAt
     })
   }
+}
+
+const sendBatchTemplates = async (
+  users: DbUser[]
+): Promise<{ triggered: number; failed: number; errors: Array<{ userId: string; reason: string }> }> => {
+  let triggered = 0
+  let failed = 0
+  const errors: Array<{ userId: string; reason: string }> = []
+
+  for (const user of users) {
+    try {
+      await startConversationForUser({ userId: user.id, skipVoiceCall: true })
+      triggered += 1
+    } catch (error) {
+      failed += 1
+      errors.push({
+        userId: user.id,
+        reason: (error as Error).message
+      })
+    }
+  }
+
+  return { triggered, failed, errors }
 }
 
 export const registerOutreachRoutes = (app: FastifyInstance): void => {
@@ -105,25 +131,55 @@ export const registerOutreachRoutes = (app: FastifyInstance): void => {
   })
 
   app.post('/users/batch/start-untouched', { preHandler: protectedHandler }, async request => {
-    const body = request.body as { preferredCallAt?: string; limit?: number } | undefined
+    const body = request.body as
+      | {
+          preferredCallAt?: string
+          limit?: number
+          runMode?: 'run_now' | 'schedule'
+          scheduledAt?: string
+        }
+      | undefined
     const tid = await getTenantId()
     const untouchedUsers = await listUntouchedUsers(dbPool, tid, body?.limit ?? 200)
 
-    let triggered = 0
-    let failed = 0
-    const errors: Array<{ userId: string; reason: string }> = []
+    const runMode = body?.runMode ?? 'run_now'
+    const templateResult = await sendBatchTemplates(untouchedUsers)
 
-    for (const user of untouchedUsers) {
-      try {
-        await startConversationForUser({ userId: user.id, preferredCallAt: body?.preferredCallAt })
-        triggered += 1
-      } catch (error) {
-        failed += 1
-        errors.push({
-          userId: user.id,
-          reason: (error as Error).message
-        })
+    let batch: {
+      batchId: string
+      state: string
+      scheduledAt: string
+      csvRows: number
+    } | null = null
+    let batchError: string | null = null
+
+    try {
+      if (!env.BOLNA_API_KEY || !env.BOLNA_AGENT_ID) {
+        throw new Error('bolna_not_configured')
       }
+
+      const batchResult = await createAndScheduleBolnaBatch(dbPool, {
+        tenantId: tid,
+        users: untouchedUsers,
+        bolna: {
+          baseUrl: env.BOLNA_BASE_URL,
+          apiKey: env.BOLNA_API_KEY,
+          agentId: env.BOLNA_AGENT_ID,
+          fromPhoneNumber: env.BOLNA_FROM_NUMBER
+        },
+        runMode,
+        scheduledAt: runMode === 'schedule' ? body?.scheduledAt : undefined
+      })
+
+      batch = {
+        batchId: batchResult.batch.batchId,
+        state: batchResult.schedule.state,
+        scheduledAt: batchResult.scheduledAt,
+        csvRows: batchResult.csvRows
+      }
+    } catch (error) {
+      batchError = (error as Error).message
+      app.log.error({ msg: 'Failed to create/schedule Bolna batch', error: batchError })
     }
 
     eventLogger.log({
@@ -131,17 +187,24 @@ export const registerOutreachRoutes = (app: FastifyInstance): void => {
       level: 'info',
       payload: {
         total: untouchedUsers.length,
-        triggered,
-        failed
+        templates_triggered: templateResult.triggered,
+        templates_failed: templateResult.failed,
+        run_mode: runMode,
+        bolna_batch_id: batch?.batchId ?? null,
+        bolna_state: batch?.state ?? null,
+        bolna_error: batchError
       }
     })
 
     return {
-      ok: true,
+      ok: !batchError,
       total: untouchedUsers.length,
-      triggered,
-      failed,
-      errors
+      triggered: templateResult.triggered,
+      failed: templateResult.failed,
+      errors: templateResult.errors,
+      runMode,
+      batch,
+      batchError
     }
   })
 

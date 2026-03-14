@@ -37,6 +37,17 @@ const getStringValue = (value: unknown, fallback: string): string => {
   return fallback
 }
 
+const toBolnaContactNumber = (raw: unknown): string => {
+  const normalized = String(raw ?? '').replace(/\s+/g, '')
+  const digitsOnly = normalized.replace(/\D/g, '')
+
+  if (digitsOnly.length === 10) return `+91${digitsOnly}`
+  if (digitsOnly.length === 12 && digitsOnly.startsWith('91')) return `+${digitsOnly}`
+  if (normalized.startsWith('+')) return normalized
+  if (digitsOnly.length > 0) return `+${digitsOnly}`
+  return ''
+}
+
 export const registerUserRoutes = (app: FastifyInstance): void => {
   app.post('/users/upload-csv', { preHandler: protectedHandler }, async (request, reply) => {
     const body = request.body as { rows?: Array<Record<string, string>> }
@@ -195,7 +206,10 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
       }
 
       lines.push(
-        [row.phoneE164, ...bolnaAgentVariables.map(variable => variableValues[variable] ?? '')]
+        [
+          toBolnaContactNumber(row.phoneE164),
+          ...bolnaAgentVariables.map(variable => variableValues[variable] ?? '')
+        ]
           .map(toCsvValue)
           .join(',')
       )

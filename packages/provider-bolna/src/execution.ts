@@ -4,6 +4,8 @@ export type BolnaExecution = {
   batch_id?: string
   status: string
   transcript?: string
+  summary?: string
+  custom_extractions?: Record<string, unknown>
   created_at?: string
   updated_at?: string
   conversation_time?: number
@@ -46,6 +48,16 @@ const toStringOrUndefined = (value: unknown): string | undefined =>
 const toNumberOrUndefined = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isFinite(value) ? value : undefined
 
+// Accepts both numeric and string representations (e.g. telephony_data.duration = "41")
+const toNumberLenient = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string') {
+    const n = Number.parseFloat(value)
+    return Number.isFinite(n) ? n : undefined
+  }
+  return undefined
+}
+
 const parseRecord = (value: unknown): Record<string, unknown> | undefined =>
   isRecord(value) ? value : undefined
 
@@ -71,11 +83,14 @@ export const parseBolnaExecution = (payload: unknown): BolnaExecution => {
     transcript: toStringOrUndefined(payload.transcript),
     created_at: toStringOrUndefined(payload.created_at),
     updated_at: toStringOrUndefined(payload.updated_at),
-    conversation_time: toNumberOrUndefined(payload.conversation_time),
+    conversation_time:
+      toNumberOrUndefined(payload.conversation_time) ?? toNumberLenient(payload.conversation_duration),
     total_cost: toNumberOrUndefined(payload.total_cost),
     answered_by_voice_mail:
       typeof payload.answered_by_voice_mail === 'boolean' ? payload.answered_by_voice_mail : undefined,
     error_message: toStringOrUndefined(payload.error_message),
+    summary: toStringOrUndefined(payload.summary),
+    custom_extractions: parseRecord(payload.custom_extractions),
     extracted_data: parseRecord(payload.extracted_data),
     context_details: parseRecord(payload.context_details),
     batch_run_details: batchRun
@@ -91,7 +106,7 @@ export const parseBolnaExecution = (payload: unknown): BolnaExecution => {
           to_number: toStringOrUndefined(telephony.to_number),
           from_number: toStringOrUndefined(telephony.from_number),
           call_type: toStringOrUndefined(telephony.call_type),
-          duration: toNumberOrUndefined(telephony.duration),
+          duration: toNumberLenient(telephony.duration),
           provider_call_id: toStringOrUndefined(telephony.provider_call_id),
           recording_url: toStringOrUndefined(telephony.recording_url),
           provider: toStringOrUndefined(telephony.provider),

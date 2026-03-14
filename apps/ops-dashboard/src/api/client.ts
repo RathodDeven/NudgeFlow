@@ -37,7 +37,7 @@ export const getUntouchedCount = (token: string): Promise<UntouchedCountResponse
 
 export const startUntouchedBatch = (
   token: string,
-  body?: { preferredCallAt?: string; limit?: number }
+  body?: { preferredCallAt?: string; limit?: number; runMode?: 'run_now' | 'schedule'; scheduledAt?: string }
 ): Promise<BatchStartUntouchedResponse> =>
   authFetch<BatchStartUntouchedResponse>('/users/batch/start-untouched', token, {
     method: 'POST',

@@ -7,9 +7,9 @@ import {
   updateInteractionSummary,
   updateLoanCaseInferenceSnapshot
 } from '@nudges/db'
-import { mapBolnaDisposition, parseBolnaExecution } from '@nudges/provider-bolna'
+import { fetchBolnaExecution, mapBolnaDisposition, parseBolnaExecution } from '@nudges/provider-bolna'
 import type { FastifyInstance } from 'fastify'
-import { dbPool, getTenantId } from '../context'
+import { dbPool, env, getTenantId } from '../context'
 import { markScheduledActionFromExecution, resolveScheduledActionStatus } from '../services/voice-scheduling'
 
 const getStringFromRecord = (
@@ -95,6 +95,33 @@ export const registerVoiceRoutes = (app: FastifyInstance): void => {
       return { ok: true }
     }
 
+    // Fetch full execution details from Bolna API to get custom_extractions and summary.
+    // The webhook payload only carries basic call metadata; analytics live in the executions endpoint.
+    let fullExecution = null as Awaited<ReturnType<typeof fetchBolnaExecution>> | null
+    if (env.BOLNA_API_KEY) {
+      try {
+        fullExecution = await fetchBolnaExecution({
+          baseUrl: env.BOLNA_BASE_URL,
+          apiKey: env.BOLNA_API_KEY,
+          executionId: execution.id
+        })
+        app.log.debug({
+          msg: 'Fetched full Bolna execution',
+          executionId: execution.id,
+          hasSummary: Boolean(fullExecution.summary),
+          customExtractionKeys: Object.keys(fullExecution.custom_extractions ?? {})
+        })
+      } catch (err) {
+        app.log.warn({ msg: 'Failed to fetch full Bolna execution', executionId: execution.id, error: err })
+      }
+    }
+
+    // custom_extractions from the full execution API are the authoritative source for
+    // intent, sentiment, follow-up times, etc.  Fall back to execution.extracted_data
+    // (webhook payload) when the fetch is unavailable.
+    const customExtractions: Record<string, unknown> =
+      fullExecution?.custom_extractions ?? execution.extracted_data ?? {}
+
     const sessionId = await ensureSession(dbPool, user.id, tid)
     const sessionContext = await getSessionContext(dbPool, sessionId)
     const callDisposition = mapBolnaDisposition(execution.status)
@@ -122,7 +149,10 @@ export const registerVoiceRoutes = (app: FastifyInstance): void => {
     }): Promise<void> => {
       if (!sessionContext?.loanCaseId) return
 
-      const extracted = execution.extracted_data ?? {}
+      // Use custom_extractions from the full execution fetch as authoritative source.
+      const extracted = customExtractions
+      // callback_time_iso / promised_completion_time_iso can be empty objects {} in
+      // Bolna responses — only treat them as dates when they are non-empty strings.
       const callbackFromExtracted =
         typeof extracted.callback_time_iso === 'string' ? extracted.callback_time_iso : undefined
       const promisedCompletionFromExtracted =
@@ -144,10 +174,11 @@ export const registerVoiceRoutes = (app: FastifyInstance): void => {
           high_intent_flag: toHighIntentValue(extracted.high_intent_flag),
           notes_for_agent: typeof extracted.notes_for_agent === 'string' ? extracted.notes_for_agent : null,
           extracted_data: extracted,
-          context_details: execution.context_details ?? {},
+          context_details: fullExecution?.context_details ?? execution.context_details ?? {},
           bolna_execution_id: execution.id,
           bolna_batch_id: execution.batch_id ?? null,
-          recording_url: execution.telephony_data?.recording_url ?? null
+          recording_url:
+            fullExecution?.telephony_data?.recording_url ?? execution.telephony_data?.recording_url ?? null
         }
       })
     }
@@ -185,9 +216,17 @@ export const registerVoiceRoutes = (app: FastifyInstance): void => {
 
     if (execution.transcript && sessionContext) {
       try {
-        // /agent/summarize-call is disabled; use Bolna webhook summary payload directly.
-        const bolnaSummary = getBolnaSummary(execution)
-        const suggestedNextCallAt = getBolnaSuggestedNextCallAt(execution)
+        // Prefer the LLM-generated summary from the full execution API.
+        // getBolnaSummary checks extracted_data / context_details as fallback.
+        const bolnaSummary = fullExecution?.summary ?? getBolnaSummary(execution)
+        const suggestedNextCallAt =
+          getBolnaSuggestedNextCallAt(execution) ??
+          (typeof customExtractions.callback_time_iso === 'string'
+            ? customExtractions.callback_time_iso
+            : undefined) ??
+          (typeof customExtractions.promised_completion_time_iso === 'string'
+            ? customExtractions.promised_completion_time_iso
+            : undefined)
 
         if (bolnaSummary) {
           await updateInteractionSummary(

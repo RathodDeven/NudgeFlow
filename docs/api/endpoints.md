@@ -33,6 +33,8 @@
 - `GET /users/export/bolna-batch.csv`
 
 Notes:
+- `POST /users/batch/start-untouched` now calls Bolna Batch APIs via `api-gateway` (create batch + schedule). Request body supports `runMode` (`run_now` or `schedule`) and optional `scheduledAt` (ISO timestamp for schedule mode).
+- Bolna create-batch requests include `retry_config` so retry behavior is explicit at batch level.
 - `GET /users/export/inferred.csv` returns admin analytics export built from DB + inferred call snapshot fields.
 - `GET /users/export/bolna-batch.csv` returns a Bolna batch-upload CSV with `contact_number` and prompt variable columns matching `bolnaAgentVariables`.
 
