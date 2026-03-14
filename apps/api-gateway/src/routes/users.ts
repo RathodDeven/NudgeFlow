@@ -57,7 +57,15 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
 
     const tid = await getTenantId()
     const stripQuotes = (s: string) => s.replace(/^['"]+|['"]+$/g, '').trim()
-    const normalisePhone = (s: string) => s.replace(/\s+/g, '').replace(/^\+?91/, '')
+    // Strip +91 / 91 country code only when the number is longer than 10 digits,
+    // meaning the country code is actually present. A bare 10-digit number that
+    // starts with "91" (e.g. 9104016273) must NOT be stripped.
+    const normalisePhone = (s: string): string => {
+      const digits = s.replace(/\s+/g, '')
+      if (digits.startsWith('+91')) return digits.slice(3)
+      if (digits.startsWith('91') && digits.length > 10) return digits.slice(2)
+      return digits
+    }
 
     const mapped = body.rows.map(r => {
       const metadata: Record<string, unknown> = {

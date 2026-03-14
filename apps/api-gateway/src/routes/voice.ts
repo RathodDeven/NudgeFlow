@@ -88,7 +88,12 @@ export const registerVoiceRoutes = (app: FastifyInstance): void => {
     }
 
     const tid = await getTenantId()
-    const normalizedPhone = rawPhone.replace(/\s+/g, '').replace(/^\+?91/, '')
+    const rawDigits = rawPhone.replace(/\s+/g, '')
+    const normalizedPhone = rawDigits.startsWith('+91')
+      ? rawDigits.slice(3)
+      : rawDigits.startsWith('91') && rawDigits.length > 10
+        ? rawDigits.slice(2)
+        : rawDigits
     const user = await getUserByPhoneE164(dbPool, tid, normalizedPhone)
     if (!user) {
       app.log.warn({ msg: 'Bolna execution for unknown user', phone: normalizedPhone })
