@@ -27,6 +27,9 @@
 - `POST /users/:id/start-conversation`
 - `POST /users/:id/calls/cancel`
 - `GET /users/:id/voice-status`
+- `GET /users/untouched/count`
+- `POST /users/batch/start-untouched`
+- `GET /users/export/inferred.csv`
 
 Auth:
 - Dashboard/admin endpoints require `Authorization: Bearer <token>` from `/auth/login`.

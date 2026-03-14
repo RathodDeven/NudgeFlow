@@ -1,4 +1,5 @@
 import type { FunnelMetrics } from '../types'
+import type { BatchStartUntouchedResponse, UntouchedCountResponse } from '../types'
 
 export const initialMetrics: FunnelMetrics = {
   reached: 0,
@@ -29,4 +30,43 @@ export const authFetch = async <T>(path: string, token: string, init?: RequestIn
   }
 
   return (await response.json()) as T
+}
+
+export const getUntouchedCount = (token: string): Promise<UntouchedCountResponse> =>
+  authFetch<UntouchedCountResponse>('/users/untouched/count', token)
+
+export const startUntouchedBatch = (
+  token: string,
+  body?: { preferredCallAt?: string; limit?: number }
+): Promise<BatchStartUntouchedResponse> =>
+  authFetch<BatchStartUntouchedResponse>('/users/batch/start-untouched', token, {
+    method: 'POST',
+    body: JSON.stringify(body ?? {})
+  })
+
+export const downloadInferredUsersCsv = async (
+  token: string,
+  filters?: { intent?: string; highIntent?: string }
+): Promise<Blob> => {
+  const params = new URLSearchParams()
+  if (filters?.intent) params.set('intent', filters.intent)
+  if (filters?.highIntent) params.set('highIntent', filters.highIntent)
+  const query = params.toString()
+
+  const response = await fetch(`/api/users/export/inferred.csv${query ? `?${query}` : ''}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  })
+
+  if (response.status === 401) {
+    throw new Error('unauthorized')
+  }
+
+  if (!response.ok) {
+    throw new Error(`request_failed_${response.status}`)
+  }
+
+  return response.blob()
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { CsvUser, PendingHITLTask } from '../types'
 import { ChatPanel } from './ChatPanel'
+import { InferencePanel } from './InferencePanel'
 import { ManualMessagePanel } from './ManualMessagePanel'
 import { PendingTasksPanel } from './PendingTasksPanel'
 import { SandboxPanel } from './SandboxPanel'
@@ -87,6 +88,8 @@ export function UserDetailView({
       </div>
 
       <UserInfoGrid user={user} />
+
+      <InferencePanel user={user} />
 
       <PendingTasksPanel tasks={userTasks} onApprove={onApprove} onReject={onReject} />
 

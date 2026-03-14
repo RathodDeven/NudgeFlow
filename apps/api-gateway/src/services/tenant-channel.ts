@@ -1,5 +1,6 @@
-import { readFile } from 'node:fs/promises'
+import { access } from 'node:fs/promises'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { TENANT_KEY } from '../context'
 
 export type TenantTemplateConfig = {
@@ -7,28 +8,61 @@ export type TenantTemplateConfig = {
   variableOrder: string[]
 }
 
-const TEMPLATE_ID_RE = /Template ID:\s*`([^`]+)`/i
-const TEMPLATE_VARS_RE = /Template Variables[^`]*`([^`]+)`/i
+type TenantTemplateModule = {
+  defaultTemplateKey: string
+  templates: Record<string, TenantTemplateConfig>
+}
 
-export const loadTenantTemplateConfig = async (): Promise<TenantTemplateConfig | null> => {
+const isTemplateConfig = (value: unknown): value is TenantTemplateConfig => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const record = value as Record<string, unknown>
+  return (
+    typeof record.templateId === 'string' &&
+    Array.isArray(record.variableOrder) &&
+    record.variableOrder.every(v => typeof v === 'string')
+  )
+}
+
+const isTemplateModule = (value: unknown): value is TenantTemplateModule => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const record = value as Record<string, unknown>
+  if (typeof record.defaultTemplateKey !== 'string') return false
+  if (!record.templates || typeof record.templates !== 'object' || Array.isArray(record.templates))
+    return false
+
+  return Object.values(record.templates as Record<string, unknown>).every(isTemplateConfig)
+}
+
+const getConfigFilePath = async (): Promise<string | null> => {
+  const root = path.join(process.cwd(), 'tenants', TENANT_KEY)
+  const candidates = [
+    path.join(root, 'whatsapp-template.config.ts'),
+    path.join(root, 'whatsapp-template.config.js')
+  ]
+
+  for (const candidate of candidates) {
+    try {
+      await access(candidate)
+      return candidate
+    } catch {}
+  }
+
+  return null
+}
+
+export const loadTenantTemplateConfig = async (
+  templateKey?: string
+): Promise<TenantTemplateConfig | null> => {
   try {
-    const filePath = path.join(process.cwd(), 'tenants', TENANT_KEY, 'CHANNEL.md')
-    const content = await readFile(filePath, 'utf-8')
-    const templateMatch = content.match(TEMPLATE_ID_RE)
-    if (!templateMatch) return null
+    const filePath = await getConfigFilePath()
+    if (!filePath) return null
 
-    const varsMatch = content.match(TEMPLATE_VARS_RE)
-    const variableOrder = varsMatch
-      ? varsMatch[1]
-          .split(',')
-          .map(v => v.trim())
-          .filter(Boolean)
-      : []
+    const loaded = await import(pathToFileURL(filePath).href)
+    const configModule = loaded.default as unknown
+    if (!isTemplateModule(configModule)) return null
 
-    return {
-      templateId: templateMatch[1],
-      variableOrder
-    }
+    const resolvedKey = templateKey ?? configModule.defaultTemplateKey
+    return configModule.templates[resolvedKey] ?? null
   } catch {
     return null
   }

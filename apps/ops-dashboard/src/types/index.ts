@@ -90,4 +90,25 @@ export type CsvUser = {
   metadata?: Record<string, unknown>
   applicationCreatedAt?: string
   applicationUpdatedAt?: string
+  inferredIntent?: string | null
+  highIntentFlag?: string | null
+  followUpAt?: string | null
+  callSummaryLatest?: string | null
+  callNotesLatest?: string | null
+  lastCallAt?: string | null
+  lastCallDisposition?: string | null
+  inferenceExtractedData?: Record<string, unknown>
+  inferenceContextDetails?: Record<string, unknown>
+}
+
+export type UntouchedCountResponse = {
+  count: number
+}
+
+export type BatchStartUntouchedResponse = {
+  ok: boolean
+  total: number
+  triggered: number
+  failed: number
+  errors: Array<{ userId: string; reason: string }>
 }

@@ -19,6 +19,12 @@ const getNextRetryDelayMs = (retryIndex: number) => {
   return Math.max(1, retryIndex) * baseMinutes * 60_000
 }
 
+const bolnaRetryConfig = {
+  enabled: true,
+  max_retries: 2,
+  retry_intervals_minutes: [30, 60]
+}
+
 export const scheduleVoiceCall = async (
   pool: DbPool,
   params: {
@@ -69,6 +75,7 @@ export const scheduleVoiceCall = async (
         recipientPhoneNumber: params.session.phoneE164,
         fromPhoneNumber: env.BOLNA_FROM_NUMBER,
         scheduledAt: scheduledAtIso,
+        retryConfig: bolnaRetryConfig,
         userData,
         bypassCallGuardrails: false
       }

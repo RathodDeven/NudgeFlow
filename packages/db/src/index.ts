@@ -20,8 +20,19 @@ export type {
   SessionSummaryRow,
   UserSessionInfo
 } from './types'
+export type { InferredUserExportRow } from './users'
 export { ensureTenant } from './tenants'
-export { getUserById, getUserByPhoneE164, insertUsers, listUsers, updateUserStage } from './users'
+export {
+  countUntouchedUsers,
+  getUserById,
+  getUserByPhoneE164,
+  insertUsers,
+  listLatestInferredUsers,
+  listUntouchedUsers,
+  listUsers,
+  updateLoanCaseInferenceSnapshot,
+  updateUserStage
+} from './users'
 export {
   ensureSession,
   getSessionMemoryState,

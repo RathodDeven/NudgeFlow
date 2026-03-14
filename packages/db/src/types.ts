@@ -24,6 +24,15 @@ export type DbUser = {
   loanUpdatedAt?: string
   applicationCreatedAt?: string
   applicationUpdatedAt?: string
+  inferredIntent?: string | null
+  highIntentFlag?: string | null
+  followUpAt?: string | null
+  callSummaryLatest?: string | null
+  callNotesLatest?: string | null
+  inferenceExtractedData?: Record<string, unknown>
+  inferenceContextDetails?: Record<string, unknown>
+  lastCallAt?: string | null
+  lastCallDisposition?: string | null
 }
 
 export type InsertUserRow = {

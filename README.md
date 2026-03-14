@@ -153,6 +153,28 @@ To test incoming WhatsApp messages locally, you need a tunnel to your port 3000.
 - **Local (via ngrok)**: `https://<your-ngrok-subdomain>.ngrok-free.app/webhooks/whatsapp/gupshup`
 - **Production**: `https://api.nudgeflow.io/webhooks/whatsapp/gupshup` (Replace with your actual domain)
 
+## Webhook Setup (Required)
+
+NudgeFlow uses **separate webhook endpoints** for WhatsApp and voice events. Do not reuse one URL for both providers.
+
+### 1) Gupshup WhatsApp Inbound Webhook
+- Endpoint path: `/webhooks/whatsapp/gupshup`
+- Local example: `https://<your-ngrok-subdomain>.ngrok-free.app/webhooks/whatsapp/gupshup`
+- Production example: `https://<your-api-domain>/webhooks/whatsapp/gupshup`
+- Purpose: inbound user WhatsApp messages and replies.
+
+### 2) Bolna Voice Webhook
+- Endpoint path: `/webhooks/voice/bolna`
+- Local example: `https://<your-ngrok-subdomain>.ngrok-free.app/webhooks/voice/bolna`
+- Production example: `https://<your-api-domain>/webhooks/voice/bolna`
+- Purpose: call execution status, transcript, and extracted/custom analytics payloads.
+
+### Data Ingestion from Bolna Analytics
+- `api-gateway` ingests Bolna webhook payloads and stores:
+  - call history in `interaction_events` and `call_attempts`
+  - latest inferred snapshot on `loan_cases` (`inferred_intent`, `high_intent_flag`, `follow_up_at`, `call_summary_latest`, and extraction/context JSON)
+- Export endpoint for ops: `GET /users/export/inferred.csv`
+
 ### Bolna Voice (Optional)
 Bolna’s execution payloads include fields like `id`, `status`, `transcript`, `created_at`, `updated_at`, and `telephony_data` with `duration`, `to_number`, `from_number`, `provider_call_id`, and `call_type`.  
 Set your Bolna webhook to `POST /webhooks/voice/bolna` so execution payloads are ingested and saved to `interaction_events` and `call_attempts`.

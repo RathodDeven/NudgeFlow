@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { authFetch, initialMetrics, tokenKey } from './api/client'
+import {
+  authFetch,
+  downloadInferredUsersCsv,
+  getUntouchedCount,
+  initialMetrics,
+  startUntouchedBatch,
+  tokenKey
+} from './api/client'
 import { CsvUpload } from './components/CsvUpload'
 import { DashboardTab } from './components/DashboardTab'
 import { Login } from './components/Login'
@@ -15,6 +22,9 @@ export function App() {
   const [events, setEvents] = useState<EventItem[]>([])
   const [pendingTasks, setPendingTasks] = useState<PendingHITLTask[]>([])
   const [csvUsers, setCsvUsers] = useState<CsvUser[]>([])
+  const [untouchedCount, setUntouchedCount] = useState<number>(0)
+  const [isBatchStarting, setIsBatchStarting] = useState<boolean>(false)
+  const [isExportingCsv, setIsExportingCsv] = useState<boolean>(false)
   const [dataError, setDataError] = useState<string>('')
   const [selectedUser, setSelectedUser] = useState<CsvUser | null>(null)
 
@@ -22,17 +32,19 @@ export function App() {
 
   const loadDashboard = useCallback(async (authToken: string): Promise<void> => {
     setDataError('')
-    const [funnel, sessionPayload, eventsPayload] = await Promise.all([
+    const [funnel, sessionPayload, eventsPayload, untouched] = await Promise.all([
       authFetch<FunnelMetrics>('/metrics/funnel', authToken).catch(() => initialMetrics),
       authFetch<{ sessions: SessionItem[] }>('/dashboard/sessions', authToken).catch(() => ({
         sessions: []
       })),
-      authFetch<{ events: EventItem[] }>('/dashboard/events', authToken).catch(() => ({ events: [] }))
+      authFetch<{ events: EventItem[] }>('/dashboard/events', authToken).catch(() => ({ events: [] })),
+      getUntouchedCount(authToken).catch(() => ({ count: 0 }))
     ])
 
     setMetrics(funnel)
     setSessions(sessionPayload.sessions)
     setEvents(eventsPayload.events)
+    setUntouchedCount(untouched.count)
     setPendingTasks([])
 
     // Load real CSV users from API (populated via CSV upload)
@@ -48,6 +60,15 @@ export function App() {
         metadata?: Record<string, unknown>
         applicationCreatedAt?: string
         applicationUpdatedAt?: string
+        inferredIntent?: string | null
+        highIntentFlag?: string | null
+        followUpAt?: string | null
+        callSummaryLatest?: string | null
+        callNotesLatest?: string | null
+        lastCallAt?: string | null
+        lastCallDisposition?: string | null
+        inferenceExtractedData?: Record<string, unknown>
+        inferenceContextDetails?: Record<string, unknown>
       }>
     }>('/users', authToken)
       .then(res =>
@@ -62,7 +83,16 @@ export function App() {
             loanAmount: u.loanAmount ?? 0,
             metadata: u.metadata,
             applicationCreatedAt: u.applicationCreatedAt,
-            applicationUpdatedAt: u.applicationUpdatedAt
+            applicationUpdatedAt: u.applicationUpdatedAt,
+            inferredIntent: u.inferredIntent,
+            highIntentFlag: u.highIntentFlag,
+            followUpAt: u.followUpAt,
+            callSummaryLatest: u.callSummaryLatest,
+            callNotesLatest: u.callNotesLatest,
+            lastCallAt: u.lastCallAt,
+            lastCallDisposition: u.lastCallDisposition,
+            inferenceExtractedData: u.inferenceExtractedData,
+            inferenceContextDetails: u.inferenceContextDetails
           }))
         )
       )
@@ -107,7 +137,56 @@ export function App() {
     setEvents([])
     setPendingTasks([])
     setCsvUsers([])
+    setUntouchedCount(0)
     setSelectedUser(null)
+  }
+
+  const handleBatchStartUntouched = async (): Promise<void> => {
+    if (!token || isBatchStarting) return
+    const proceed = window.confirm(
+      `Start outreach for ${untouchedCount} untouched users? This sends WhatsApp template and schedules calls.`
+    )
+    if (!proceed) return
+
+    setIsBatchStarting(true)
+    setDataError('')
+    try {
+      const res = await startUntouchedBatch(token)
+      const message = `Batch complete: triggered ${res.triggered}/${res.total}, failed ${res.failed}`
+      setDataError(message)
+      await loadDashboard(token)
+    } catch (error) {
+      setDataError(`Batch start failed: ${(error as Error).message}`)
+    } finally {
+      setIsBatchStarting(false)
+      setTimeout(() => setDataError(''), 6000)
+    }
+  }
+
+  const handleExportInferredCsv = async (filters?: {
+    intent?: string
+    highIntent?: string
+  }): Promise<void> => {
+    if (!token || isExportingCsv) return
+    setIsExportingCsv(true)
+    setDataError('')
+    try {
+      const blob = await downloadInferredUsersCsv(token, filters)
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = 'inferred-users-latest.csv'
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      URL.revokeObjectURL(url)
+      setDataError('Inferred users CSV exported.')
+    } catch (error) {
+      setDataError(`CSV export failed: ${(error as Error).message}`)
+    } finally {
+      setIsExportingCsv(false)
+      setTimeout(() => setDataError(''), 4000)
+    }
   }
 
   const handleApprove = (taskId: string) => {
@@ -226,6 +305,11 @@ export function App() {
             }
             csvUsers={csvUsers}
             onUserSelect={user => setSelectedUser(user)}
+            untouchedCount={untouchedCount}
+            isBatchStarting={isBatchStarting}
+            isExportingCsv={isExportingCsv}
+            onBatchStartUntouched={handleBatchStartUntouched}
+            onExportInferredCsv={handleExportInferredCsv}
           />
         )}
       </main>

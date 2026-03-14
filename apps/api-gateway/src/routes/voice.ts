@@ -1,22 +1,17 @@
 import {
-  countRecentFailedCallAttempts,
   ensureSession,
   getSessionContext,
   getUserByPhoneE164,
   insertCallAttempt,
   insertInteractionEvent,
   updateInteractionSummary,
+  updateLoanCaseInferenceSnapshot,
   updateSessionMemoryState
 } from '@nudges/db'
 import { mapBolnaDisposition, parseBolnaExecution } from '@nudges/provider-bolna'
 import type { FastifyInstance } from 'fastify'
 import { dbPool, getTenantId } from '../context'
-import {
-  markScheduledActionFromExecution,
-  resolveScheduledActionStatus,
-  scheduleVoiceCall,
-  scheduleVoiceRetryIfNeeded
-} from '../services/voice-scheduling'
+import { markScheduledActionFromExecution, resolveScheduledActionStatus } from '../services/voice-scheduling'
 
 export const registerVoiceRoutes = (app: FastifyInstance): void => {
   app.post('/webhooks/voice/bolna', async (request, reply) => {
@@ -56,6 +51,59 @@ export const registerVoiceRoutes = (app: FastifyInstance): void => {
     const direction = telephony?.call_type?.toLowerCase() === 'inbound' ? 'inbound' : 'outbound'
     const eventType = execution.transcript ? 'call_summary' : 'call_attempt'
     const providerTimestamp = execution.updated_at ?? execution.created_at ?? new Date().toISOString()
+
+    const toHighIntentValue = (value: unknown): string | null => {
+      if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase()
+        if (['yes', 'true', 'high', '1'].includes(normalized)) return 'yes'
+        if (['no', 'false', 'low', '0'].includes(normalized)) return 'no'
+        return normalized || null
+      }
+      if (typeof value === 'number') return value > 0 ? 'yes' : 'no'
+      if (typeof value === 'boolean') return value ? 'yes' : 'no'
+      return null
+    }
+
+    const persistInferenceSnapshot = async (summary?: {
+      summary?: string
+      suggestedNextCallAt?: string
+      updatedSummaryState?: Record<string, unknown>
+    }): Promise<void> => {
+      if (!sessionContext?.loanCaseId) return
+
+      const extracted = execution.extracted_data ?? {}
+      const callbackFromExtracted =
+        typeof extracted.callback_time_iso === 'string' ? extracted.callback_time_iso : undefined
+      const promisedCompletionFromExtracted =
+        typeof extracted.promised_completion_time_iso === 'string'
+          ? extracted.promised_completion_time_iso
+          : undefined
+      const extractedIntent = typeof extracted.intent_class === 'string' ? extracted.intent_class : undefined
+      const summaryIntent =
+        typeof summary?.updatedSummaryState?.sessionIntent === 'string'
+          ? summary.updatedSummaryState.sessionIntent
+          : undefined
+      const resolvedIntent = extractedIntent ?? summaryIntent ?? null
+
+      await updateLoanCaseInferenceSnapshot(dbPool, {
+        loanCaseId: sessionContext.loanCaseId,
+        inferred: {
+          last_call_at: providerTimestamp,
+          last_call_disposition: callDisposition ?? null,
+          last_call_summary: summary?.summary ?? null,
+          suggested_next_call_at:
+            summary?.suggestedNextCallAt ?? callbackFromExtracted ?? promisedCompletionFromExtracted ?? null,
+          inferred_intent: resolvedIntent,
+          high_intent_flag: toHighIntentValue(extracted.high_intent_flag),
+          notes_for_agent: typeof extracted.notes_for_agent === 'string' ? extracted.notes_for_agent : null,
+          extracted_data: extracted,
+          context_details: execution.context_details ?? {},
+          bolna_execution_id: execution.id,
+          bolna_batch_id: execution.batch_id ?? null,
+          recording_url: execution.telephony_data?.recording_url ?? null
+        }
+      })
+    }
 
     const interactionId = await insertInteractionEvent(dbPool, {
       sessionId,
@@ -121,17 +169,22 @@ export const registerVoiceRoutes = (app: FastifyInstance): void => {
             })
           }
 
-          if (summary.suggestedNextCallAt && sessionContext) {
-            await scheduleVoiceCall(dbPool, {
-              session: sessionContext,
-              callReason: 'follow_up',
-              requestedAt: summary.suggestedNextCallAt
-            })
-          }
+          await persistInferenceSnapshot(summary)
+
+          // Follow-up scheduling is paused for now; we only capture intent + summary.
+          // if (summary.suggestedNextCallAt && sessionContext) {
+          //   await scheduleVoiceCall(dbPool, {
+          //     session: sessionContext,
+          //     callReason: 'follow_up',
+          //     requestedAt: summary.suggestedNextCallAt
+          //   })
+          // }
         }
       } catch (error) {
         app.log.warn({ msg: 'Failed to summarize call transcript', error })
       }
+    } else {
+      await persistInferenceSnapshot()
     }
 
     if (sessionContext && callDisposition && scheduleStatus !== 'processing') {
@@ -139,12 +192,13 @@ export const registerVoiceRoutes = (app: FastifyInstance): void => {
         return { ok: true }
       }
 
-      const sinceIso = new Date(Date.now() - 60 * 60 * 1000).toISOString()
-      const recentFailures = await countRecentFailedCallAttempts(dbPool, sessionId, sinceIso)
-      await scheduleVoiceRetryIfNeeded(dbPool, {
-        session: sessionContext,
-        recentFailedAttempts: recentFailures
-      })
+      // Bolna auto-retry handles failed-call retries for now.
+      // const sinceIso = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+      // const recentFailures = await countRecentFailedCallAttempts(dbPool, sessionId, sinceIso)
+      // await scheduleVoiceRetryIfNeeded(dbPool, {
+      //   session: sessionContext,
+      //   recentFailedAttempts: recentFailures
+      // })
     }
 
     return { ok: true }

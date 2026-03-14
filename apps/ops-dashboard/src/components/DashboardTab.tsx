@@ -19,6 +19,11 @@ interface DashboardTabProps {
   csvUsers: CsvUser[]
   csvUploadSlot?: ReactNode
   onUserSelect?: (user: CsvUser) => void
+  untouchedCount: number
+  isBatchStarting: boolean
+  isExportingCsv: boolean
+  onBatchStartUntouched: () => void
+  onExportInferredCsv: (filters?: { intent?: string; highIntent?: string }) => void
 }
 
 export function DashboardTab({
@@ -32,10 +37,17 @@ export function DashboardTab({
   fakeOverrideStatus,
   csvUsers,
   csvUploadSlot,
-  onUserSelect
+  onUserSelect,
+  untouchedCount,
+  isBatchStarting,
+  isExportingCsv,
+  onBatchStartUntouched,
+  onExportInferredCsv
 }: DashboardTabProps) {
   const callQueue = pendingTasks.filter(t => t.callPriority && t.callPriority !== 'none')
   const [expandedScript, setExpandedScript] = useState<string | null>(null)
+  const [intentFilter, setIntentFilter] = useState('')
+  const [highIntentFilter, setHighIntentFilter] = useState('')
 
   return (
     <>
@@ -61,6 +73,58 @@ export function DashboardTab({
           {csvUploadSlot}
         </section>
       )}
+
+      <section className="card" style={{ marginBottom: '2rem' }}>
+        <div className="row" style={{ flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          <div>
+            <h2>Batch Outreach</h2>
+            <p className="muted" style={{ marginTop: 4 }}>
+              Untouched users: <strong>{untouchedCount}</strong>
+            </p>
+          </div>
+          <div className="row gap-sm" style={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <select value={intentFilter} onChange={e => setIntentFilter(e.target.value)}>
+              <option value="">All Intent Classes</option>
+              <option value="continue_now">continue_now</option>
+              <option value="continue_later_today">continue_later_today</option>
+              <option value="continue_later_date">continue_later_date</option>
+              <option value="not_interested">not_interested</option>
+              <option value="already_completed">already_completed</option>
+              <option value="needs_help">needs_help</option>
+              <option value="wrong_number">wrong_number</option>
+              <option value="unreachable">unreachable</option>
+            </select>
+            <select value={highIntentFilter} onChange={e => setHighIntentFilter(e.target.value)}>
+              <option value="">All High Intent</option>
+              <option value="yes">yes</option>
+              <option value="no">no</option>
+            </select>
+            <button
+              type="button"
+              onClick={onBatchStartUntouched}
+              disabled={isBatchStarting || untouchedCount === 0}
+              title={
+                untouchedCount === 0 ? 'No untouched users available' : 'Start outreach for untouched users'
+              }
+            >
+              {isBatchStarting ? 'Starting Batch...' : 'Start Batch for Untouched Users'}
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() =>
+                onExportInferredCsv({
+                  intent: intentFilter || undefined,
+                  highIntent: highIntentFilter || undefined
+                })
+              }
+              disabled={isExportingCsv}
+            >
+              {isExportingCsv ? 'Preparing CSV...' : 'Export Inferred Users CSV'}
+            </button>
+          </div>
+        </div>
+      </section>
 
       <section className="card" style={{ marginBottom: '2rem' }}>
         <h2>👥 All Ingested Users ({csvUsers.length})</h2>
