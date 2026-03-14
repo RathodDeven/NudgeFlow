@@ -13,6 +13,12 @@ import { Login } from './components/Login'
 import { UserDetailView } from './components/UserDetailView'
 import type { CsvUser, EventItem, FunnelMetrics, PendingHITLTask, SessionItem } from './types'
 
+const toDisplayMobile = (phoneE164: string): string => {
+  const digits = String(phoneE164 ?? '').replace(/\D/g, '')
+  if (digits.length === 12 && digits.startsWith('91')) return digits.slice(2)
+  return digits
+}
+
 export function App() {
   const [token, setToken] = useState<string | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
@@ -79,7 +85,7 @@ export function App() {
             customerId: u.externalUserId,
             name: u.fullName ?? 'Unknown',
             firmName: u.firmName ?? '',
-            mobile: u.phoneE164.replace(/^\+?91/, ''),
+            mobile: toDisplayMobile(u.phoneE164),
             status: (u.currentStage ?? 'fresh_loan').toUpperCase(),
             loanAmount: u.loanAmount ?? 0,
             metadata: u.metadata,

@@ -72,7 +72,7 @@ const toOffsetIsoString = (date: Date): string => date.toISOString().replace('Z'
 
 const resolveScheduledAt = (params: { runMode: 'run_now' | 'schedule'; scheduledAt?: string }): Date => {
   if (params.runMode === 'run_now') {
-    return new Date(Date.now() + BOLNA_RUN_NOW_DELAY_MS)
+    return toMinimumAllowedScheduleTime(new Date(Date.now() + BOLNA_RUN_NOW_DELAY_MS))
   }
   if (!params.scheduledAt) {
     throw new Error('scheduled_at_required')
