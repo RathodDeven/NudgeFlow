@@ -103,7 +103,7 @@ If you use Bolna for calls, configure its webhook to point at the API gateway:
 The webhook will:
 - Map the execution to a user by phone number.
 - Store transcripts and call metadata in `interaction_events` + `call_attempts`.
-- Summarize transcripts via `POST /agent/summarize-call` and persist summary state updates.
+- Persist call summaries directly from Bolna webhook payload fields (`extracted_data` / `context_details` / transcript fallback).
 
 For outbound calls, set `BOLNA_API_KEY`, `BOLNA_BASE_URL`, and `BOLNA_AGENT_ID` in `.env`.
 If you want the call to appear from a specific number, set `BOLNA_FROM_NUMBER`.

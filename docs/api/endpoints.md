@@ -30,6 +30,11 @@
 - `GET /users/untouched/count`
 - `POST /users/batch/start-untouched`
 - `GET /users/export/inferred.csv`
+- `GET /users/export/bolna-batch.csv`
+
+Notes:
+- `GET /users/export/inferred.csv` returns admin analytics export built from DB + inferred call snapshot fields.
+- `GET /users/export/bolna-batch.csv` returns a Bolna batch-upload CSV with `contact_number` and prompt variable columns matching `bolnaAgentVariables`.
 
 Auth:
 - Dashboard/admin endpoints require `Authorization: Bearer <token>` from `/auth/login`.
@@ -37,6 +42,9 @@ Auth:
 ## agent-runtime
 - `POST /agent/respond`
 - `POST /agent/summarize-call`
+
+Notes:
+- `/agent/summarize-call` remains available but is currently not used by the Bolna voice webhook flow.
 
 ## ingestion-worker
 - `POST /ingestion/normalize`

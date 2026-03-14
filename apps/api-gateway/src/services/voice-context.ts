@@ -1,7 +1,8 @@
 import type { DbPool, InteractionEventRow, SessionContext } from '@nudges/db'
 import { listRecentCallSummaries } from '@nudges/db'
+import { bolnaAgentVariables } from '@nudges/provider-bolna'
 
-const formatStageLabel = (stage: string | null): string => {
+export const formatVoiceLoanStage = (stage: string | null): string => {
   if (!stage) return 'current'
   return stage
     .split('_')
@@ -9,7 +10,7 @@ const formatStageLabel = (stage: string | null): string => {
     .join(' ')
 }
 
-const resolvePendingStep = (stage: string | null): string => {
+export const resolveVoicePendingStep = (stage: string | null): string => {
   switch ((stage ?? '').toLowerCase()) {
     case 'journey_started':
     case 'offer':
@@ -43,20 +44,19 @@ const formatZonedTime = (iso: string, timeZone: string): string => {
   }
 }
 
-export type VoiceUserData = {
-  customer_name: string
-  loan_stage: string
-  pending_step: string
-  loan_amount: string
-  firm_name: string
-  partner_case_id: string
-  application_created_at: string
-  application_updated_at: string
-  call_reason: string
-  last_call_summary: string
-  last_call_time: string
-  last_call_disposition: string
-  timezone: string
+export const formatVoiceLoanAmount = (amount: number | string | null | undefined): string => {
+  const parsedAmount = typeof amount === 'number' ? amount : Number(amount)
+  return Number.isFinite(parsedAmount) ? `₹${parsedAmount.toLocaleString('en-IN')}` : 'Unknown'
+}
+
+export type VoiceUserData = Record<string, string>
+
+const pickBolnaUserData = (source: Record<string, string>): VoiceUserData => {
+  const mapped: VoiceUserData = {}
+  for (const variable of bolnaAgentVariables) {
+    mapped[variable] = source[variable] ?? ''
+  }
+  return mapped
 }
 
 export const buildVoiceUserData = async (
@@ -68,33 +68,22 @@ export const buildVoiceUserData = async (
 ): Promise<{ userData: VoiceUserData; lastCall: InteractionEventRow | null }> => {
   const lastCalls = await listRecentCallSummaries(pool, params.session.sessionId, 1)
   const lastCall = lastCalls[0] ?? null
-
-  const parsedAmount =
-    typeof params.session.loanAmount === 'number'
-      ? params.session.loanAmount
-      : Number(params.session.loanAmount)
-  const loanAmount = Number.isFinite(parsedAmount) ? `₹${parsedAmount.toLocaleString('en-IN')}` : 'Unknown'
   const firmName = params.session.firmName ?? 'Unknown'
-  const lastCallTime = lastCall?.createdAt
-    ? formatZonedTime(lastCall.createdAt, params.session.tenantTimezone)
-    : 'N/A'
+  const currentTime = formatZonedTime(new Date().toISOString(), params.session.tenantTimezone)
+
+  const allUserData: Record<string, string> = {
+    timezone: params.session.tenantTimezone,
+    application_created_at: params.session.applicationCreatedAt ?? 'Unknown',
+    loan_amount: formatVoiceLoanAmount(params.session.loanAmount),
+    loan_stage: formatVoiceLoanStage(params.session.currentStage),
+    pending_step: resolveVoicePendingStep(params.session.currentStage),
+    customer_name: params.session.fullName ?? 'Unknown',
+    firm_name: firmName,
+    time: currentTime
+  }
 
   return {
-    userData: {
-      customer_name: params.session.fullName ?? 'Unknown',
-      loan_stage: formatStageLabel(params.session.currentStage),
-      pending_step: resolvePendingStep(params.session.currentStage),
-      loan_amount: loanAmount,
-      firm_name: firmName,
-      partner_case_id: params.session.partnerCaseId ?? 'Unknown',
-      application_created_at: params.session.applicationCreatedAt ?? 'Unknown',
-      application_updated_at: params.session.applicationUpdatedAt ?? 'Unknown',
-      call_reason: params.callReason,
-      last_call_summary: lastCall?.summary ?? 'No prior call summary',
-      last_call_time: lastCallTime,
-      last_call_disposition: lastCall?.callDisposition ?? 'N/A',
-      timezone: params.session.tenantTimezone
-    },
+    userData: pickBolnaUserData(allUserData),
     lastCall
   }
 }

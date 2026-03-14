@@ -5,13 +5,43 @@ import {
   insertCallAttempt,
   insertInteractionEvent,
   updateInteractionSummary,
-  updateLoanCaseInferenceSnapshot,
-  updateSessionMemoryState
+  updateLoanCaseInferenceSnapshot
 } from '@nudges/db'
 import { mapBolnaDisposition, parseBolnaExecution } from '@nudges/provider-bolna'
 import type { FastifyInstance } from 'fastify'
 import { dbPool, getTenantId } from '../context'
 import { markScheduledActionFromExecution, resolveScheduledActionStatus } from '../services/voice-scheduling'
+
+const getStringFromRecord = (
+  record: Record<string, unknown> | undefined,
+  key: string
+): string | undefined => {
+  const value = record?.[key]
+  return typeof value === 'string' && value.trim().length > 0 ? value : undefined
+}
+
+const getBolnaSummary = (execution: {
+  extracted_data?: Record<string, unknown>
+  context_details?: Record<string, unknown>
+  transcript?: string
+}): string | undefined => {
+  return (
+    getStringFromRecord(execution.extracted_data, 'summary') ??
+    getStringFromRecord(execution.extracted_data, 'call_summary') ??
+    getStringFromRecord(execution.context_details, 'summary') ??
+    getStringFromRecord(execution.context_details, 'call_summary') ??
+    execution.transcript
+  )
+}
+
+const getBolnaSuggestedNextCallAt = (execution: {
+  extracted_data?: Record<string, unknown>
+}): string | undefined => {
+  return (
+    getStringFromRecord(execution.extracted_data, 'callback_time_iso') ??
+    getStringFromRecord(execution.extracted_data, 'promised_completion_time_iso')
+  )
+}
 
 export const registerVoiceRoutes = (app: FastifyInstance): void => {
   app.post('/webhooks/voice/bolna', async (request, reply) => {
@@ -26,6 +56,28 @@ export const registerVoiceRoutes = (app: FastifyInstance): void => {
     if (!execution) {
       return reply.status(400).send({ error: 'invalid_payload' })
     }
+
+    app.log.info({
+      msg: 'Bolna webhook received',
+      executionId: execution.id,
+      status: execution.status,
+      batchId: execution.batch_id,
+      hasTranscript: Boolean(execution.transcript),
+      transcriptLength: execution.transcript?.length ?? 0,
+      extractedKeys: Object.keys(execution.extracted_data ?? {}),
+      contextKeys: Object.keys(execution.context_details ?? {}),
+      telephony: {
+        provider: execution.telephony_data?.provider,
+        callType: execution.telephony_data?.call_type,
+        from: execution.telephony_data?.from_number,
+        to: execution.telephony_data?.to_number,
+        providerCallId: execution.telephony_data?.provider_call_id,
+        duration: execution.telephony_data?.duration,
+        status: execution.telephony_data?.status,
+        hangupReason: execution.telephony_data?.hangup_reason
+      }
+    })
+    app.log.debug({ msg: 'Bolna webhook raw payload', payload: request.body, executionId: execution.id })
 
     const telephony = execution.telephony_data
     const rawPhone =
@@ -67,7 +119,6 @@ export const registerVoiceRoutes = (app: FastifyInstance): void => {
     const persistInferenceSnapshot = async (summary?: {
       summary?: string
       suggestedNextCallAt?: string
-      updatedSummaryState?: Record<string, unknown>
     }): Promise<void> => {
       if (!sessionContext?.loanCaseId) return
 
@@ -79,11 +130,7 @@ export const registerVoiceRoutes = (app: FastifyInstance): void => {
           ? extracted.promised_completion_time_iso
           : undefined
       const extractedIntent = typeof extracted.intent_class === 'string' ? extracted.intent_class : undefined
-      const summaryIntent =
-        typeof summary?.updatedSummaryState?.sessionIntent === 'string'
-          ? summary.updatedSummaryState.sessionIntent
-          : undefined
-      const resolvedIntent = extractedIntent ?? summaryIntent ?? null
+      const resolvedIntent = extractedIntent ?? null
 
       await updateLoanCaseInferenceSnapshot(dbPool, {
         loanCaseId: sessionContext.loanCaseId,
@@ -138,50 +185,23 @@ export const registerVoiceRoutes = (app: FastifyInstance): void => {
 
     if (execution.transcript && sessionContext) {
       try {
-        const summaryRes = await fetch('http://localhost:3010/agent/summarize-call', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId,
-            summaryState: sessionContext.summaryState,
-            compactFacts: sessionContext.compactFacts,
-            transcript: execution.transcript
-          })
-        })
+        // /agent/summarize-call is disabled; use Bolna webhook summary payload directly.
+        const bolnaSummary = getBolnaSummary(execution)
+        const suggestedNextCallAt = getBolnaSuggestedNextCallAt(execution)
 
-        if (summaryRes.ok) {
-          const summary = await summaryRes.json()
+        if (bolnaSummary) {
           await updateInteractionSummary(
             dbPool,
             interactionId,
-            summary.summary,
+            bolnaSummary,
             callDisposition,
             callDurationSeconds
           )
-
-          if (summary.updatedSummaryState) {
-            await updateSessionMemoryState(dbPool, {
-              sessionId,
-              summaryState: summary.updatedSummaryState,
-              compactFacts: sessionContext.compactFacts,
-              messageCount: sessionContext.messageCount,
-              tokenEstimate: sessionContext.tokenEstimate
-            })
-          }
-
-          await persistInferenceSnapshot(summary)
-
-          // Follow-up scheduling is paused for now; we only capture intent + summary.
-          // if (summary.suggestedNextCallAt && sessionContext) {
-          //   await scheduleVoiceCall(dbPool, {
-          //     session: sessionContext,
-          //     callReason: 'follow_up',
-          //     requestedAt: summary.suggestedNextCallAt
-          //   })
-          // }
         }
+
+        await persistInferenceSnapshot({ summary: bolnaSummary, suggestedNextCallAt })
       } catch (error) {
-        app.log.warn({ msg: 'Failed to summarize call transcript', error })
+        app.log.warn({ msg: 'Failed to persist Bolna summary payload', error, executionId: execution.id })
       }
     } else {
       await persistInferenceSnapshot()

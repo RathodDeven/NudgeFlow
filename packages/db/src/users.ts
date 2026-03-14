@@ -342,6 +342,10 @@ export type InferredUserExportRow = {
   partnerCaseId: string | null
   currentStage: string | null
   loanAmount: number | null
+  firmName: string | null
+  applicationCreatedAt: string | null
+  applicationUpdatedAt: string | null
+  tenantTimezone: string
   inferred: Record<string, unknown>
 }
 
@@ -380,6 +384,10 @@ export const listLatestInferredUsers = async (
        lc.partner_case_id AS "partnerCaseId",
        lc.current_stage AS "currentStage",
        lc.loan_amount AS "loanAmount",
+       lc.firm_name AS "firmName",
+       lc.application_created_at AS "applicationCreatedAt",
+       lc.application_updated_at AS "applicationUpdatedAt",
+       t.timezone AS "tenantTimezone",
        (
          COALESCE(lc.metadata->'call_inference', '{}'::jsonb)
          || jsonb_build_object(
@@ -399,6 +407,7 @@ export const listLatestInferredUsers = async (
        ) AS inferred
      FROM user_profiles up
      JOIN loan_cases lc ON lc.user_id = up.id AND lc.tenant_id = up.tenant_id
+     JOIN tenants t ON t.id = up.tenant_id
      WHERE up.tenant_id = $1
        AND (
          lc.inferred_intent IS NOT NULL

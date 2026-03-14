@@ -9,8 +9,14 @@ import {
   updateAgentActive,
   updateUserStage
 } from '@nudges/db'
+import { bolnaAgentVariables } from '@nudges/provider-bolna'
 import type { FastifyInstance } from 'fastify'
 import { dbPool, getTenantId, protectedHandler } from '../context'
+import {
+  formatVoiceLoanAmount,
+  formatVoiceLoanStage,
+  resolveVoicePendingStep
+} from '../services/voice-context'
 import {
   cancelScheduledVoiceCalls,
   getVoiceCallTargetTime,
@@ -23,6 +29,12 @@ const toCsvValue = (value: unknown): string => {
   const raw = typeof value === 'string' ? value : JSON.stringify(value)
   const escaped = raw.replace(/"/g, '""')
   return `"${escaped}"`
+}
+
+const getStringValue = (value: unknown, fallback: string): string => {
+  if (typeof value === 'string' && value.trim().length > 0) return value
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value)
+  return fallback
 }
 
 export const registerUserRoutes = (app: FastifyInstance): void => {
@@ -98,6 +110,10 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
       'partner_case_id',
       'current_stage',
       'loan_amount',
+      'firm_name',
+      'application_created_at',
+      'application_updated_at',
+      'tenant_timezone',
       'inferred_intent',
       'high_intent_flag',
       'last_call_disposition',
@@ -106,12 +122,16 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
       'last_call_summary',
       'notes_for_agent',
       'extracted_data_json',
-      'context_details_json'
+      'context_details_json',
+      'bolna_execution_id',
+      'bolna_batch_id',
+      'recording_url'
     ]
 
     const lines = [headers.join(',')]
     for (const row of rows) {
       const inferred = row.inferred ?? {}
+
       lines.push(
         [
           row.externalUserId,
@@ -122,6 +142,10 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
           row.partnerCaseId,
           row.currentStage,
           row.loanAmount,
+          row.firmName,
+          row.applicationCreatedAt,
+          row.applicationUpdatedAt,
+          row.tenantTimezone,
           inferred.inferred_intent,
           inferred.high_intent_flag,
           inferred.last_call_disposition,
@@ -130,7 +154,10 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
           inferred.last_call_summary,
           inferred.notes_for_agent,
           inferred.extracted_data,
-          inferred.context_details
+          inferred.context_details,
+          inferred.bolna_execution_id,
+          inferred.bolna_batch_id,
+          inferred.recording_url
         ]
           .map(toCsvValue)
           .join(',')
@@ -140,6 +167,43 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
     const csv = `${lines.join('\n')}\n`
     reply.header('Content-Type', 'text/csv; charset=utf-8')
     reply.header('Content-Disposition', 'attachment; filename="inferred-users-latest.csv"')
+    return reply.send(csv)
+  })
+
+  app.get('/users/export/bolna-batch.csv', { preHandler: protectedHandler }, async (request, reply) => {
+    const query = request.query as { limit?: string; intent?: string; highIntent?: string }
+    const tid = await getTenantId()
+    const rows = await listLatestInferredUsers(dbPool, tid, query?.limit ? Number(query.limit) : 1000, {
+      intent: query.intent,
+      highIntentFlag: query.highIntent
+    })
+
+    const headers = ['contact_number', ...bolnaAgentVariables]
+
+    const lines = [headers.join(',')]
+    for (const row of rows) {
+      const inferred = row.inferred ?? {}
+      const variableValues: Record<string, string> = {
+        timezone: getStringValue(row.tenantTimezone, 'Asia/Kolkata'),
+        application_created_at: getStringValue(row.applicationCreatedAt, 'Unknown'),
+        loan_amount: formatVoiceLoanAmount(row.loanAmount),
+        loan_stage: formatVoiceLoanStage(row.currentStage),
+        pending_step: resolveVoicePendingStep(row.currentStage),
+        customer_name: getStringValue(row.fullName, 'Unknown'),
+        firm_name: getStringValue(row.firmName, 'Unknown'),
+        time: getStringValue(inferred.suggested_next_call_at ?? inferred.last_call_at, '')
+      }
+
+      lines.push(
+        [row.phoneE164, ...bolnaAgentVariables.map(variable => variableValues[variable] ?? '')]
+          .map(toCsvValue)
+          .join(',')
+      )
+    }
+
+    const csv = `${lines.join('\n')}\n`
+    reply.header('Content-Type', 'text/csv; charset=utf-8')
+    reply.header('Content-Disposition', 'attachment; filename="bolna-batch-upload.csv"')
     return reply.send(csv)
   })
 

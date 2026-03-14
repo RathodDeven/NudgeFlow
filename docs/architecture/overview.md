@@ -23,6 +23,8 @@
 9. Human handoff toggles session state and pauses agent actions.
 10. Ops dashboard authenticates via `api-gateway` token endpoints before loading protected metrics/sessions/events/decisions.
 11. Dashboard can start outreach in batch for untouched users; untouched means no outbound WhatsApp events and no call attempts.
-12. Bolna webhook data updates interaction history and latest call inference snapshot on `loan_cases` (intent/disposition/follow-up/summary/extractions) for filtering and CSV export.
+12. Bolna webhook data updates interaction history and latest call inference snapshot on `loan_cases` (intent/disposition/follow-up/summary/extractions) for filtering and CSV export. Call summaries are sourced directly from Bolna webhook payload fields.
+
+- CSV exports are split by purpose: inferred analytics export for admin action (`/users/export/inferred.csv`) and Bolna batch-upload export (`/users/export/bolna-batch.csv`) with `contact_number` + dynamic variables aligned to `@nudges/provider-bolna`.
 
 - Session memory uses persisted summary + compact facts with a bounded recent message window, plus call summaries (not raw transcripts) from interaction events.
