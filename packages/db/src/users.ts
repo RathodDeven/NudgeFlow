@@ -19,6 +19,7 @@ export const insertUsers = async (
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
          ON CONFLICT (tenant_id, external_user_id) DO UPDATE SET
            full_name = EXCLUDED.full_name,
+           phone_e164 = EXCLUDED.phone_e164,
            city = EXCLUDED.city,
            state = EXCLUDED.state,
            created_at = COALESCE(EXCLUDED.created_at, user_profiles.created_at)`,

@@ -57,17 +57,28 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
 
     const tid = await getTenantId()
     const stripQuotes = (s: string) => s.replace(/^['"]+|['"]+$/g, '').trim()
-    // Strip +91 / 91 country code only when the number is longer than 10 digits,
-    // meaning the country code is actually present. A bare 10-digit number that
-    // starts with "91" (e.g. 9104016273) must NOT be stripped.
     const normalisePhone = (s: string): string => {
-      const digits = s.replace(/\s+/g, '')
-      if (digits.startsWith('+91')) return digits.slice(3)
-      if (digits.startsWith('91') && digits.length > 10) return digits.slice(2)
+      const digits = String(s ?? '').replace(/\D/g, '')
+      if (digits.length === 12 && digits.startsWith('91')) return digits.slice(2)
+      if (digits.length === 10) return digits
       return digits
     }
 
-    const mapped = body.rows.map(r => {
+    const mapped = body.rows.map((r, idx) => {
+      const rawMobile = r.mobile || r.phone || ''
+      const phoneE164 = normalisePhone(rawMobile)
+
+      if (idx < 5) {
+        app.log.info({
+          msg: 'CSV mobile normalization sample',
+          rowIndex: idx,
+          externalUserId: stripQuotes(r.customer_id || r.external_user_id || ''),
+          rawMobile,
+          digitsOnly: String(rawMobile).replace(/\D/g, ''),
+          normalizedPhone: phoneE164
+        })
+      }
+
       const metadata: Record<string, unknown> = {
         tenure: r.tenure || undefined,
         annual_interest: r.annual_interest || undefined,
@@ -80,7 +91,7 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
       return {
         externalUserId: stripQuotes(r.customer_id || r.external_user_id || ''),
         fullName: r.name || r.full_name || 'Unknown',
-        phoneE164: normalisePhone(r.mobile || r.phone || ''),
+        phoneE164,
         currentStage: (r.status || 'fresh_loan').toLowerCase(),
         partnerCaseId: r.loan_application_no || r.partner_case_id || crypto.randomUUID(),
         loanAmount: r.loan_amount ? Number.parseFloat(r.loan_amount) : undefined,
@@ -95,6 +106,14 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
     })
 
     const result = await insertUsers(dbPool, tid, mapped)
+
+    app.log.info({
+      msg: 'CSV upload mapped phones',
+      totalRows: mapped.length,
+      phoneSamples: mapped
+        .slice(0, 5)
+        .map(row => ({ externalUserId: row.externalUserId, phoneE164: row.phoneE164 }))
+    })
 
     eventLogger.log({
       event: 'csv_users_uploaded',
