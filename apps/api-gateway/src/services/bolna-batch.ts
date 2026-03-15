@@ -62,8 +62,8 @@ const resolveFromPhoneNumbers = (fromPhoneNumber?: string): string[] => {
     .filter(Boolean)
 }
 
-const BOLNA_MIN_SCHEDULE_LEAD_MS = 2 * 60 * 1000
-const BOLNA_SCHEDULE_BUFFER_MS = 10 * 1000
+const BOLNA_MIN_SCHEDULE_LEAD_MS = 15 * 1000 // Reduced from 2m for faster "Run Now"
+const BOLNA_SCHEDULE_BUFFER_MS = 5 * 1000
 const BOLNA_RUN_NOW_DELAY_MS = 10 * 1000
 
 const toMinimumAllowedScheduleTime = (date: Date): Date => {
@@ -174,7 +174,8 @@ export const createAndScheduleBolnaBatch = async (
       apiKey: params.bolna.apiKey,
       batchId: batch.batchId,
       scheduledAt,
-      bypassCallGuardrails
+      bypassCallGuardrails,
+      isScheduled: params.runMode === 'schedule'
     })
   } catch (error) {
     if (!isIsoFormatError(error)) {
@@ -187,7 +188,8 @@ export const createAndScheduleBolnaBatch = async (
       apiKey: params.bolna.apiKey,
       batchId: batch.batchId,
       scheduledAt,
-      bypassCallGuardrails
+      bypassCallGuardrails,
+      isScheduled: params.runMode === 'schedule'
     })
   }
 

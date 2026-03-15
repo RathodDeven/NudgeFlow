@@ -193,9 +193,11 @@ export const scheduleBolnaBatch = async (params: {
   batchId: string
   scheduledAt: string
   bypassCallGuardrails?: boolean
+  isScheduled?: boolean
 }): Promise<BolnaScheduleBatchResponse> => {
   const form = new FormData()
   form.append('scheduled_at', params.scheduledAt)
+  form.append('is_scheduled', String(params.isScheduled ?? true))
   form.append('bypass_call_guardrails', String(params.bypassCallGuardrails ?? false))
 
   const response = await fetch(`${params.baseUrl}/batches/${params.batchId}/schedule`, {

@@ -12,13 +12,18 @@ export const initialMetrics: FunnelMetrics = {
 export const tokenKey = 'nudgeflow_admin_token'
 
 export const authFetch = async <T>(path: string, token: string, init?: RequestInit): Promise<T> => {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    ...(init?.headers as Record<string, string> ?? {})
+  }
+
+  if (init?.body) {
+    headers['Content-Type'] = 'application/json'
+  }
+
   const response = await fetch(`/api${path}`, {
     ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-      ...(init?.headers ?? {})
-    }
+    headers
   })
 
   if (response.status === 401) {
