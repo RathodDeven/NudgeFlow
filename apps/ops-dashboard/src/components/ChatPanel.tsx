@@ -1,5 +1,7 @@
 import type { DbChatMessage } from '../types'
 import { ChatBubble } from './ChatBubble'
+import { MessageSquare, Bot } from 'lucide-react'
+import { cn } from "@/lib/utils"
 
 export type ChatPanelProps = {
   isLoading: boolean
@@ -21,53 +23,37 @@ export const ChatPanel = ({
   manualPanel
 }: ChatPanelProps) => {
   return (
-    <div style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column' }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '0.5rem'
-        }}
-      >
-        <h3 style={{ margin: 0 }}>💬 Chat as Neha (Agent)</h3>
-        <label
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            cursor: 'pointer',
-            fontSize: '0.85rem',
-            background: isAgentActive ? '#dcf8c6' : '#fee2e2',
-            padding: '4px 8px',
-            borderRadius: '4px'
-          }}
+    <div className="flex-1 min-h-0 flex flex-col gap-4">
+      <div className="flex items-center justify-between border-b pb-4">
+        <div className="flex items-center gap-2">
+          <MessageSquare className="h-5 w-5 text-primary" />
+          <h3 className="text-lg font-semibold tracking-tight">Conversation History</h3>
+        </div>
+        
+        <button
+          type="button"
+          onClick={onToggleAgent}
+          className={cn(
+            "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold transition-all border",
+            isAgentActive 
+              ? "bg-green-50 text-green-700 border-green-200" 
+              : "bg-muted text-muted-foreground border-transparent hover:bg-accent"
+          )}
         >
-          <input type="checkbox" checked={isAgentActive} onChange={onToggleAgent} />
-          <strong>AI Auto-Reply Active</strong>
-        </label>
+          <Bot className={cn("h-3.5 w-3.5", isAgentActive ? "animate-pulse" : "")} />
+          {isAgentActive ? "AI Agent Active" : "AI Agent Paused"}
+        </button>
       </div>
-      <div
-        style={{
-          height: '400px',
-          overflowY: 'auto',
-          border: '1px solid #ccc',
-          borderRadius: '8px',
-          padding: '1rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '10px',
-          background: '#ece5dd'
-        }}
-      >
+
+      <div className="flex-1 min-h-[400px] overflow-y-auto rounded-xl border bg-muted/30 p-4 shadow-inner flex flex-col gap-4">
         {isLoading ? (
-          <p className="muted" style={{ textAlign: 'center', marginTop: 'auto', marginBottom: 'auto' }}>
-            Loading messages...
-          </p>
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-xs text-muted-foreground animate-pulse">Loading messages...</p>
+          </div>
         ) : messages.length === 0 ? (
-          <p className="muted" style={{ textAlign: 'center', marginTop: 'auto', marginBottom: 'auto' }}>
-            No message history found.
-          </p>
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-xs text-muted-foreground italic">No message history found.</p>
+          </div>
         ) : (
           messages.map(msg => (
             <ChatBubble
@@ -81,18 +67,19 @@ export const ChatPanel = ({
           ))
         )}
         {isSending && (
-          <div
-            style={{
-              alignSelf: 'flex-start',
-              background: '#fff',
-              padding: '10px 14px',
-              borderRadius: '8px'
-            }}
-          >
-            <span className="muted">Simulated User is typing...</span>
+          <div className="self-start bg-background p-3 rounded-2xl rounded-tl-none border shadow-sm max-w-[80%]">
+            <p className="text-xs text-muted-foreground animate-pulse leading-none flex items-center gap-2">
+              <span className="flex gap-1">
+                <span className="w-1 h-1 bg-muted-foreground/50 rounded-full animate-bounce" />
+                <span className="w-1 h-1 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:0.2s]" />
+                <span className="w-1 h-1 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:0.4s]" />
+              </span>
+              User is typing...
+            </p>
           </div>
         )}
       </div>
+
       {manualPanel}
     </div>
   )

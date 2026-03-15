@@ -1,3 +1,4 @@
+import { FlaskConical } from 'lucide-react'
 import { MessageInput } from './MessageInput'
 
 export type SandboxPanelProps = {
@@ -18,25 +19,23 @@ export const SandboxPanel = ({
   onSend
 }: SandboxPanelProps) => {
   return (
-    <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column' }}>
-      <h3 style={{ marginTop: 0 }}>🧪 Sandbox Simulator</h3>
-      <p className="muted" style={{ fontSize: '0.9rem', marginBottom: '1rem' }}>
-        Interact as the <strong>USER</strong> directly to test agent behavior.
+    <div className="flex flex-col gap-4 rounded-xl border bg-card/50 p-4 shadow-sm backdrop-blur-sm">
+      <div className="flex items-center gap-2">
+        <FlaskConical className="h-4 w-4 text-purple-500" />
+        <h3 className="text-sm font-semibold tracking-tight">Simulator (Control Console)</h3>
+      </div>
+      
+      <p className="text-[11px] text-muted-foreground leading-tight">
+        Interact as the <strong className="text-foreground font-bold">USER ({userName})</strong> to test agent behavior.
       </p>
 
-      <div style={{ marginTop: 'auto' }}>
+      <div className="mt-auto space-y-3">
         {status && (
-          <p
-            style={{
-              padding: '8px 12px',
-              borderRadius: '6px',
-              background: status.startsWith('✅') ? '#dcf8c6' : '#fee2e2',
-              fontSize: '0.85rem',
-              marginBottom: '1rem'
-            }}
-          >
+          <div className={`text-[11px] font-medium px-2 py-1.5 rounded ${
+            status.startsWith('✅') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+          }`}>
             {status}
-          </p>
+          </div>
         )}
         <MessageInput
           message={message}

@@ -1,6 +1,6 @@
 import type { ChatMessage } from '../types'
-
-import type { ReactNode } from 'react'
+import { cn } from "@/lib/utils"
+import { ExternalLink, User, Bot } from 'lucide-react'
 
 type WhatsAppButtonMessage = {
   text: string
@@ -38,72 +38,55 @@ interface ChatBubbleProps {
 }
 
 export function ChatBubble({ msg, userName }: ChatBubbleProps) {
-  const parsed = msg.role === 'agent' ? parseWhatsAppMessage(msg.text) : null
+  const isUser = msg.role === 'user'
+  const isAgent = msg.role === 'agent'
+  const parsed = isAgent ? parseWhatsAppMessage(msg.text) : null
 
   return (
-    <div
-      style={{
-        alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-        maxWidth: '80%'
-      }}
-    >
-      {msg.role === 'agent' && parsed ? (
-        <div
-          style={{
-            background: '#fff',
-            borderRadius: '8px',
-            boxShadow: '0 1px 2px rgba(0,0,0,.15)',
-            overflow: 'hidden'
-          }}
-        >
-          <div style={{ padding: '10px 14px' }}>
-            <strong style={{ fontSize: '0.75rem', color: '#128C7E', display: 'block', marginBottom: '4px' }}>
-              Neha
-            </strong>
-            {parsed.imageUrl && (
-              <img
-                src={parsed.imageUrl}
-                alt="Promo"
-                style={{ width: '100%', borderRadius: '4px', marginBottom: '8px', display: 'block' }}
-              />
-            )}
-            <span style={{ whiteSpace: 'pre-wrap', color: '#111' }}>{parsed.text}</span>
+    <div className={cn(
+      "flex flex-col max-w-[85%]",
+      isUser ? "self-end items-end" : "self-start items-start"
+    )}>
+      <div className={cn(
+        "flex items-center gap-1.5 mb-1 px-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground",
+        isUser ? "flex-row-reverse" : "flex-row"
+      )}>
+        {isUser ? <User className="h-3 w-3" /> : <Bot className="h-3 w-3" />}
+        <span>{isUser ? userName : (isAgent ? "Neha" : "System")}</span>
+      </div>
+
+      <div className={cn(
+        "rounded-2xl px-4 py-2.5 shadow-sm text-sm overflow-hidden",
+        isUser 
+          ? "bg-primary text-primary-foreground rounded-tr-none" 
+          : "bg-background border rounded-tl-none"
+      )}>
+        {isAgent && parsed?.imageUrl && (
+          <div className="mb-3 -mx-4 -mt-2.5 overflow-hidden">
+            <img
+              src={parsed.imageUrl}
+              alt="Promo"
+              className="w-full h-auto object-cover max-h-48"
+            />
           </div>
-          {parsed.buttonLabel && parsed.buttonUrl ? (
-            <a
-              href={parsed.buttonUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: 'block',
-                textAlign: 'center',
-                padding: '10px',
-                borderTop: '1px solid #e0e0e0',
-                color: '#128C7E',
-                textDecoration: 'none',
-                fontWeight: 600,
-                fontSize: '0.95rem'
-              }}
-            >
-              🔗 {parsed.buttonLabel}
-            </a>
-          ) : null}
-        </div>
-      ) : (
-        <div
-          style={{
-            background: msg.role === 'user' ? '#dcf8c6' : '#ffebee',
-            padding: '10px 14px',
-            borderRadius: '8px',
-            boxShadow: '0 1px 2px rgba(0,0,0,.1)'
-          }}
-        >
-          <strong style={{ fontSize: '0.75rem', color: '#666', display: 'block', marginBottom: '4px' }}>
-            {msg.role === 'user' ? `You (${userName})` : 'System'}
-          </strong>
-          <span style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</span>
-        </div>
-      )}
+        )}
+        
+        <p className="whitespace-pre-wrap leading-relaxed">
+          {parsed ? parsed.text : msg.text}
+        </p>
+
+        {parsed?.buttonLabel && parsed?.buttonUrl && (
+          <a
+            href={parsed.buttonUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 flex items-center justify-center gap-1.5 w-full rounded-md border bg-muted/50 hover:bg-muted py-2 text-xs font-semibold transition-colors no-underline text-foreground"
+          >
+            <ExternalLink className="h-3 w-3" />
+            {parsed.buttonLabel}
+          </a>
+        )}
+      </div>
     </div>
   )
 }

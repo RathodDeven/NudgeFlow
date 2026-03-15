@@ -38,7 +38,7 @@ export function UserDetailPage({
   onApprove,
   onReject
 }: UserDetailPageProps) {
-  const [activeTab, setActiveTab] = useState<'chat' | 'info' | 'voice' | 'actions'>('chat')
+  const [activeTab, setActiveTab] = useState<'chat' | 'info' | 'voice'>('chat')
   const [preferredCallAt, setPreferredCallAt] = useState('')
 
   const {
@@ -59,8 +59,7 @@ export function UserDetailPage({
   const tabs = [
     { id: 'chat', label: 'Conversation', icon: MessageSquare },
     { id: 'info', label: 'User Info', icon: Info },
-    { id: 'voice', label: 'Voice/Calls', icon: PhoneCall },
-    { id: 'actions', label: 'Approvals', icon: ShieldCheck }
+    { id: 'voice', label: 'Voice/Calls', icon: PhoneCall }
   ]
 
   return (
@@ -107,7 +106,8 @@ export function UserDetailPage({
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id as 'chat' | 'info' | 'voice')}
                   className={cn(
                     'flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors relative whitespace-nowrap',
                     activeTab === tab.id
@@ -117,11 +117,6 @@ export function UserDetailPage({
                 >
                   <Icon className="h-4 w-4" />
                   {tab.label}
-                  {tab.id === 'actions' && userTasks.length > 0 && (
-                    <span className="inline-flex items-center justify-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700 ml-1">
-                      {userTasks.length}
-                    </span>
-                  )}
                 </button>
               )
             })}
@@ -129,7 +124,7 @@ export function UserDetailPage({
 
           <div className="min-h-[500px] rounded-xl border bg-card/50 backdrop-blur-sm shadow-sm p-4">
             {activeTab === 'chat' && (
-              <div className="flex flex-col h-full gap-4">
+              <div className="flex flex-col h-full gap-6">
                 <ChatPanel
                   isLoading={isLoading}
                   isSending={sandbox.isSending}
@@ -138,39 +133,36 @@ export function UserDetailPage({
                   userName={user.name}
                   onToggleAgent={handleAgentToggle}
                   manualPanel={
-                    <ManualMessagePanel
-                      isSandbox={isSandbox}
-                      useWhatsapp={manual.useWhatsapp}
-                      onToggleWhatsapp={manual.setUseWhatsapp}
-                      onInsertTemplate={() =>
-                        manual.handleSendManualMessage(
-                          `Namaste ${user.name}!\n\nWe saw you dropped off during the ${user.status} step. Do you need any help?`
-                        )
-                      }
-                      status={manual.manualStatus}
-                      isSending={manual.isManualSending}
-                      message={manual.agentInputMessage}
-                      onChange={manual.setAgentInputMessage}
-                      onSend={() => manual.handleSendManualMessage()}
-                    />
+                    <div className="flex flex-col gap-6 mt-4">
+                      <ManualMessagePanel
+                        isSandbox={isSandbox}
+                        useWhatsapp={manual.useWhatsapp}
+                        onToggleWhatsapp={manual.setUseWhatsapp}
+                        onInsertTemplate={() =>
+                          manual.handleSendManualMessage(
+                            `Namaste ${user.name}!\n\nWe saw you dropped off during the ${user.status} step. Do you need any help?`
+                          )
+                        }
+                        status={manual.manualStatus}
+                        isSending={manual.isManualSending}
+                        message={manual.agentInputMessage}
+                        onChange={manual.setAgentInputMessage}
+                        onSend={() => manual.handleSendManualMessage()}
+                      />
+
+                      {isSandbox && (
+                        <SandboxPanel
+                          userName={user.name}
+                          status={sandbox.sandboxStatus}
+                          isSending={sandbox.isSending}
+                          message={sandbox.inputMessage}
+                          onChange={sandbox.setInputMessage}
+                          onSend={sandbox.handleSimulateMessage}
+                        />
+                      )}
+                    </div>
                   }
                 />
-
-                {isSandbox && (
-                  <div className="mt-8 border-t pt-6">
-                    <h3 className="text-sm font-semibold mb-4 bg-muted/50 p-2 rounded">
-                      Simulator (Control Console)
-                    </h3>
-                    <SandboxPanel
-                      userName={user.name}
-                      status={sandbox.sandboxStatus}
-                      isSending={sandbox.isSending}
-                      message={sandbox.inputMessage}
-                      onChange={sandbox.setInputMessage}
-                      onSend={sandbox.handleSimulateMessage}
-                    />
-                  </div>
-                )}
               </div>
             )}
 
@@ -279,10 +271,6 @@ export function UserDetailPage({
                 />
               </div>
             )}
-
-            {activeTab === 'actions' && (
-              <PendingTasksPanel tasks={userTasks} onApprove={onApprove} onReject={onReject} />
-            )}
           </div>
         </div>
 
@@ -315,6 +303,7 @@ export function UserDetailPage({
               </div>
               <div className="pt-4 border-t">
                 <button
+                  type="button"
                   className="w-full flex items-center justify-center gap-2 rounded-md border border-input bg-background hover:bg-accent h-9 px-4 text-xs"
                   onClick={() => setActiveTab('info')}
                 >
