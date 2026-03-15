@@ -11,6 +11,11 @@ export const getPool = (databaseUrl?: string): pg.Pool => {
       max: 10,
       idleTimeoutMillis: 30000
     })
+
+    // CRITICAL: Handle errors on idle clients to prevent process crashes
+    pool.on('error', (err) => {
+      console.error('[db] Unexpected error on idle client:', err.message)
+    })
   }
   return pool
 }

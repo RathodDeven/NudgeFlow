@@ -1,5 +1,5 @@
 import type { FunnelMetrics } from '../types'
-import type { BatchStartUntouchedResponse, UntouchedCountResponse } from '../types'
+import type { BatchStartUntouchedResponse, UntouchedCountResponse, BolnaBatchItem } from '../types'
 
 export const initialMetrics: FunnelMetrics = {
   reached: 0,
@@ -70,3 +70,16 @@ export const downloadInferredUsersCsv = async (
 
   return response.blob()
 }
+
+export const listBatches = (token: string): Promise<{ batches: BolnaBatchItem[] }> =>
+  authFetch<{ batches: BolnaBatchItem[] }>('/batches', token)
+
+export const stopBatch = (token: string, batchId: string): Promise<{ message: string; state: string }> =>
+  authFetch<{ message: string; state: string }>(`/batches/${batchId}/stop`, token, {
+    method: 'POST'
+  })
+
+export const deleteBatch = (token: string, batchId: string): Promise<{ message: string; state: string }> =>
+  authFetch<{ message: string; state: string }>(`/batches/${batchId}`, token, {
+    method: 'DELETE'
+  })

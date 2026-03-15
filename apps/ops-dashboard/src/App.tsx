@@ -11,6 +11,11 @@ import { CsvUpload } from './components/CsvUpload'
 import { DashboardTab } from './components/DashboardTab'
 import { Login } from './components/Login'
 import { UserDetailView } from './components/UserDetailView'
+import { MainLayout } from './layouts/MainLayout'
+import { OverviewPage } from './pages/OverviewPage'
+import { UserDetailPage } from './pages/UserDetailPage'
+import { UsersPage } from './pages/UsersPage'
+import { BatchesPage } from './pages/BatchesPage'
 import type { CsvUser, EventItem, FunnelMetrics, PendingHITLTask, SessionItem } from './types'
 
 const toDisplayMobile = (phoneE164: string): string => {
@@ -170,10 +175,11 @@ export function App() {
     }
   }
 
-  const handleBatchScheduleUntouched = async (): Promise<void> => {
-    if (!token || isBatchStarting || !scheduleAtLocal) return
+  const handleBatchScheduleUntouched = async (overrideTime?: string): Promise<void> => {
+    const timeToUse = overrideTime || scheduleAtLocal
+    if (!token || isBatchStarting || !timeToUse) return
 
-    const scheduledAtIso = new Date(scheduleAtLocal).toISOString()
+    const scheduledAtIso = new Date(timeToUse).toISOString()
     const proceed = window.confirm(
       `Schedule Bolna batch for ${untouchedCount} untouched users at ${new Date(scheduledAtIso).toLocaleString()}?`
     )
@@ -253,8 +259,15 @@ export function App() {
     setTimeout(() => setDataError(''), 3000)
   }
 
+  const [activeTab, setActiveTab] = useState<string>('overview')
+
   if (loading) {
-    return <div className="screen center">Checking admin session...</div>
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4" />
+        <div className="text-muted-foreground font-medium animate-pulse">Checking admin session...</div>
+      </div>
+    )
   }
 
   if (!isAuthenticated) {
@@ -262,93 +275,84 @@ export function App() {
   }
 
   return (
-    <div className="screen">
-      <main>
-        <section className="row">
-          <div>
-            <h1>NudgeFlow Ops</h1>
-            <div className="row gap-xs" style={{ alignItems: 'center' }}>
-              <p className="muted">Protected dashboard. Admin auth required.</p>
-              <span
-                className={`badge ${process.env.NODE_ENV === 'production' ? 'off' : 'on'}`}
-                style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}
-              >
-                {process.env.NODE_ENV === 'production' ? '● Production' : '● Sandbox'}
-              </span>
-            </div>
-          </div>
-          <div className="row gap-sm">
-            <button
-              type="button"
-              className={!selectedUser ? '' : 'secondary'}
-              onClick={() => {
-                setSelectedUser(null)
-              }}
-            >
-              Dashboard
-            </button>
+    <MainLayout
+      activeTab={selectedUser ? 'user detail' : activeTab}
+      setActiveTab={setActiveTab}
+      onLogout={logout}
+      dataError={dataError}
+    >
+      {selectedUser ? (
+        <UserDetailPage
+          user={selectedUser}
+          token={token ?? ''}
+          onClose={() => setSelectedUser(null)}
+          onStatusChange={fakeOverrideStatus}
+          pendingTasks={pendingTasks}
+          onApprove={handleApprove}
+          onReject={handleReject}
+        />
+      ) : (
+        <>
+          {activeTab === 'overview' && <OverviewPage metrics={metrics} sessions={sessions} events={events} />}
 
-            <div style={{ width: '1px', background: '#ccc', margin: '0 8px' }} />
-
-            <button
-              type="button"
-              onClick={() => {
-                if (!token) return
-                loadDashboard(token).catch(() => setDataError('Refresh failed'))
-              }}
-            >
-              Refresh Data
-            </button>
-            <button type="button" className="secondary" onClick={logout}>
-              Logout
-            </button>
-          </div>
-        </section>
-
-        {dataError ? <p className="error">{dataError}</p> : null}
-
-        {selectedUser ? (
-          <UserDetailView
-            user={selectedUser}
-            token={token ?? ''}
-            onClose={() => setSelectedUser(null)}
-            onStatusChange={fakeOverrideStatus}
-            pendingTasks={pendingTasks}
-            onApprove={handleApprove}
-            onReject={handleReject}
-          />
-        ) : (
-          <DashboardTab
-            metrics={metrics}
-            sessions={sessions}
-            events={events}
-            pendingTasks={pendingTasks}
-            onApprove={handleApprove}
-            onReject={handleReject}
-            onMarkCalled={handleMarkCalled}
-            fakeOverrideStatus={fakeOverrideStatus}
-            csvUploadSlot={
-              token ? (
+          {activeTab === 'users' && (
+            <UsersPage
+              csvUsers={csvUsers}
+              onUserSelect={(user: CsvUser) => setSelectedUser(user)}
+              isExportingCsv={isExportingCsv}
+              onExportInferredCsv={handleExportInferredCsv}
+              untouchedCount={untouchedCount}
+              onBatchRunNowUntouched={handleBatchStartUntouched}
+              onBatchScheduleUntouched={handleBatchScheduleUntouched}
+              isBatchStarting={isBatchStarting}
+              csvUploadSlot={
                 <CsvUpload
                   apiBase="/api"
-                  token={token}
+                  token={token ?? ''}
                   onUploadComplete={() => token && loadDashboard(token)}
                 />
-              ) : null
-            }
-            csvUsers={csvUsers}
-            onUserSelect={user => setSelectedUser(user)}
-            untouchedCount={untouchedCount}
-            isBatchStarting={isBatchStarting}
-            isExportingCsv={isExportingCsv}
-            scheduleAtLocal={scheduleAtLocal}
-            onScheduleAtLocalChange={setScheduleAtLocal}
-            onBatchRunNowUntouched={handleBatchStartUntouched}
-            onBatchScheduleUntouched={handleBatchScheduleUntouched}
-            onExportInferredCsv={handleExportInferredCsv}
-          />
-        )}
-      </main>
-    </div>
+              }
+            />
+          )}
+
+          {activeTab === 'batches' && <BatchesPage token={token ?? ''} />}
+
+          {activeTab === 'settings' && (
+            <div className="space-y-6">
+              <div className="flex flex-col gap-2">
+                <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
+                <p className="text-muted-foreground">
+                  Manage dashboard preferences and batch outreach configuration.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-6">
+                <div className="rounded-xl border bg-card p-6 shadow-sm">
+                  <h3 className="text-lg font-semibold mb-4 text-left">System Actions</h3>
+                  <div className="space-y-4">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        token && loadDashboard(token).catch(() => setDataError('Refresh failed'))
+                      }
+                      className="w-full inline-flex items-center justify-center rounded-md border border-input bg-background h-10 px-4 py-2 text-sm font-medium hover:bg-accent"
+                    >
+                      Force Refresh Data
+                    </button>
+                    <button
+                      type="button"
+                      onClick={logout}
+                      className="w-full inline-flex items-center justify-center rounded-md bg-destructive text-destructive-foreground h-10 px-4 py-2 text-sm font-medium hover:bg-destructive/90 transition-colors shadow-sm"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </MainLayout>
   )
 }

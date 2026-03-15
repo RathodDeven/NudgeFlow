@@ -4,6 +4,12 @@ import { requireAdminAuth } from './auth'
 
 export const env = loadEnv()
 export const dbPool = getPool(env.DATABASE_URL)
+
+// Handle idle connection errors to prevent service crash
+dbPool.on('error', (err) => {
+  console.error('[api-gateway] Database pool error:', err.message)
+})
+
 export const TENANT_KEY = process.env.TENANT_ID ?? 'clickpe'
 
 let tenantUUID: string | null = null

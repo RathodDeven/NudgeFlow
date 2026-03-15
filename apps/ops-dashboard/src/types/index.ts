@@ -120,3 +120,23 @@ export type BatchStartUntouchedResponse = {
   } | null
   batchError: string | null
 }
+
+export type BolnaBatchItem = {
+  batch_id: string
+  humanized_created_at: string
+  created_at: string
+  updated_at: string
+  status: string
+  scheduled_at?: string
+  from_phone_number?: string
+  from_phone_numbers?: string[]
+  file_name?: string
+  valid_contacts: number
+  total_contacts: number
+  execution_status?: {
+    completed: number
+    ringing: number
+    'in-progress': number
+    [key: string]: number
+  }
+}

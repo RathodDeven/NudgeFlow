@@ -42,6 +42,26 @@ export type BolnaScheduleBatchResponse = {
   state: string
 }
 
+export type BolnaBatchItem = {
+  batch_id: string
+  humanized_created_at: string
+  created_at: string
+  updated_at: string
+  status: string
+  scheduled_at?: string
+  from_phone_number?: string
+  from_phone_numbers?: string[]
+  file_name?: string
+  valid_contacts: number
+  total_contacts: number
+  execution_status?: {
+    completed: number
+    ringing: number
+    'in-progress': number
+    [key: string]: number
+  }
+}
+
 export { bolnaAgentPrompt, bolnaAgentVariables, bolnaAgentWelcomeMessage } from './agent-templates'
 
 export const fetchBolnaExecution = async (params: {
@@ -196,4 +216,63 @@ export const scheduleBolnaBatch = async (params: {
     message: data.message ?? 'success',
     state: data.state ?? 'scheduled'
   }
+}
+
+export const listBolnaBatches = async (params: {
+  baseUrl: string
+  apiKey: string
+  agentId: string
+}): Promise<BolnaBatchItem[]> => {
+  const response = await fetch(`${params.baseUrl}/batches/${params.agentId}/all`, {
+    headers: {
+      Authorization: `Bearer ${params.apiKey}`
+    }
+  })
+
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(`bolna_list_batches_failed:${text}`)
+  }
+
+  return (await response.json()) as BolnaBatchItem[]
+}
+
+export const stopBolnaBatch = async (params: {
+  baseUrl: string
+  apiKey: string
+  batchId: string
+}): Promise<{ message: string; state: string }> => {
+  const response = await fetch(`${params.baseUrl}/batches/${params.batchId}/stop`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${params.apiKey}`
+    }
+  })
+
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(`bolna_stop_batch_failed:${text}`)
+  }
+
+  return (await response.json()) as { message: string; state: string }
+}
+
+export const deleteBolnaBatch = async (params: {
+  baseUrl: string
+  apiKey: string
+  batchId: string
+}): Promise<{ message: string; state: string }> => {
+  const response = await fetch(`${params.baseUrl}/batches/${params.batchId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${params.apiKey}`
+    }
+  })
+
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(`bolna_delete_batch_failed:${text}`)
+  }
+
+  return (await response.json()) as { message: string; state: string }
 }

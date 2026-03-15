@@ -5,7 +5,10 @@ import {
   type BolnaScheduleBatchResponse,
   bolnaAgentVariables,
   createBolnaBatch,
-  scheduleBolnaBatch
+  scheduleBolnaBatch,
+  listBolnaBatches,
+  stopBolnaBatch,
+  deleteBolnaBatch
 } from '@nudges/provider-bolna'
 import { formatVoiceLoanAmount, formatVoiceLoanStage, resolveVoicePendingStep } from './voice-context'
 
@@ -190,9 +193,21 @@ export const createAndScheduleBolnaBatch = async (
 
   return {
     total: params.users.length,
-    csvRows,
+    csvRows: csvRows,
     batch,
     schedule,
     scheduledAt
   }
+}
+
+export const listBatches = async (params: { baseUrl: string; apiKey: string; agentId: string }) => {
+  return listBolnaBatches(params)
+}
+
+export const stopBatch = async (params: { baseUrl: string; apiKey: string; batchId: string }) => {
+  return stopBolnaBatch(params)
+}
+
+export const deleteBatch = async (params: { baseUrl: string; apiKey: string; batchId: string }) => {
+  return deleteBolnaBatch(params)
 }

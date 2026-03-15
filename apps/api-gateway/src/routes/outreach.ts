@@ -10,7 +10,7 @@ import {
 } from '@nudges/db'
 import type { FastifyInstance } from 'fastify'
 import { dbPool, env, getTenantId, protectedHandler } from '../context'
-import { createAndScheduleBolnaBatch } from '../services/bolna-batch'
+import { createAndScheduleBolnaBatch, listBatches, stopBatch, deleteBatch } from '../services/bolna-batch'
 import { recordMessageInteraction } from '../services/interactions'
 import { applyMessageMemoryUpdate } from '../services/memory'
 import { loadTenantTemplateConfig } from '../services/tenant-channel'
@@ -237,5 +237,55 @@ export const registerOutreachRoutes = (app: FastifyInstance): void => {
     const callAttempts = await listCallAttemptsBySession(dbPool, sessionId, 20)
 
     return reply.send({ scheduledActions, callAttempts })
+  })
+
+  app.get('/batches', { preHandler: protectedHandler }, async (request, reply) => {
+    try {
+      if (!env.BOLNA_API_KEY || !env.BOLNA_AGENT_ID) {
+        throw new Error('bolna_not_configured')
+      }
+      const batches = await listBatches({
+        baseUrl: env.BOLNA_BASE_URL,
+        apiKey: env.BOLNA_API_KEY,
+        agentId: env.BOLNA_AGENT_ID
+      })
+      return reply.send({ batches })
+    } catch (error) {
+      return reply.status(500).send({ error: (error as Error).message })
+    }
+  })
+
+  app.post('/batches/:id/stop', { preHandler: protectedHandler }, async (request, reply) => {
+    const batchId = (request.params as { id: string }).id
+    try {
+      if (!env.BOLNA_API_KEY) {
+        throw new Error('bolna_not_configured')
+      }
+      const result = await stopBatch({
+        baseUrl: env.BOLNA_BASE_URL,
+        apiKey: env.BOLNA_API_KEY,
+        batchId
+      })
+      return reply.send(result)
+    } catch (error) {
+      return reply.status(500).send({ error: (error as Error).message })
+    }
+  })
+
+  app.delete('/batches/:id', { preHandler: protectedHandler }, async (request, reply) => {
+    const batchId = (request.params as { id: string }).id
+    try {
+      if (!env.BOLNA_API_KEY) {
+        throw new Error('bolna_not_configured')
+      }
+      const result = await deleteBatch({
+        baseUrl: env.BOLNA_BASE_URL,
+        apiKey: env.BOLNA_API_KEY,
+        batchId
+      })
+      return reply.send(result)
+    } catch (error) {
+      return reply.status(500).send({ error: (error as Error).message })
+    }
   })
 }
