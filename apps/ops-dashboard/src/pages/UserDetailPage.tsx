@@ -313,9 +313,9 @@ export function UserDetailPage({
             </div>
           </div>
 
-          <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6 overflow-hidden">
+          <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
             <h3 className="font-semibold text-sm mb-4">Latest Summary</h3>
-            <p className="text-xs text-muted-foreground leading-relaxed italic">
+            <p className="text-xs text-muted-foreground leading-relaxed italic whitespace-pre-wrap">
               {user.callSummaryLatest || 'No call summary available yet for this user.'}
             </p>
           </div>

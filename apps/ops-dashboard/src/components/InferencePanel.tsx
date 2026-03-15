@@ -28,7 +28,7 @@ export const InferencePanel = ({ user }: { user: CsvUser }) => {
                 {item.label}
               </span>
             </div>
-            <p className="text-sm font-bold truncate">
+            <p className="text-sm font-bold break-words">
               {toDisplay(item.value)}
             </p>
           </div>
@@ -44,10 +44,10 @@ export const InferencePanel = ({ user }: { user: CsvUser }) => {
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
             {entries.map(([key, value]) => (
               <div key={key} className="p-2.5 rounded-lg bg-muted/30 border border-border/50">
-                <span className="block text-[10px] font-semibold text-muted-foreground mb-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
+                <span className="block text-[10px] font-semibold text-muted-foreground mb-1 break-words">
                   {key.replace(/_/g, ' ')}
                 </span>
-                <span className="block text-xs font-medium truncate">
+                <span className="block text-xs font-medium break-words">
                   {toDisplay(value)}
                 </span>
               </div>
