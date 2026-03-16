@@ -1,7 +1,7 @@
 import { canonicalIngestionRowSchema, ingestExcelRequestSchema } from '@nudges/domain'
 import Fastify from 'fastify'
 
-const app = Fastify({ logger: true })
+const app = Fastify({ logger: true, disableRequestLogging: true })
 
 type MappingProfile = {
   fields: Record<string, string>

@@ -6,7 +6,7 @@ import {
   updateScheduledActionStatus
 } from '@nudges/db'
 import { type ConnectionOptions, Queue, Worker } from 'bullmq'
-import { sendWhatsAppFollowup } from './followup'
+import { sendWhatsAppFollowup, sendWhatsAppTemplate } from './followup'
 import { evaluateAndPersistPolicy } from './policy'
 import { dbPool, env } from './state'
 
@@ -62,6 +62,8 @@ new Worker<FollowupJob>(
 
       if (action.actionType === 'whatsapp_followup') {
         await sendWhatsAppFollowup(sessionId)
+      } else if (action.actionType === 'whatsapp_template') {
+        await sendWhatsAppTemplate(sessionId)
       } else {
         await updateScheduledActionStatus(dbPool, {
           actionId: scheduledActionId,

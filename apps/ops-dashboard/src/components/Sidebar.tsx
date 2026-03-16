@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, LogOut, Menu, Settings, Users, X, Layers } from 'lucide-react'
+import { LayoutDashboard, LogOut, Menu, Settings, Users, X, Layers, MessageSquare } from 'lucide-react'
 import { useState } from 'react'
 
 interface SidebarProps {
@@ -7,10 +7,20 @@ interface SidebarProps {
   activeTab: string
   setActiveTab: (tab: string) => void
   onLogout: () => void
+  useWhatsapp?: boolean
+  onToggleWhatsapp?: (value: boolean) => void
 }
 
-export function Sidebar({ className, activeTab, setActiveTab, onLogout }: SidebarProps) {
+export function Sidebar({
+  className,
+  activeTab,
+  setActiveTab,
+  onLogout,
+  useWhatsapp,
+  onToggleWhatsapp
+}: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const isSandbox = import.meta.env.VITE_ENABLE_SANDBOX === 'true'
 
   const navItems = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -73,6 +83,34 @@ export function Sidebar({ className, activeTab, setActiveTab, onLogout }: Sideba
           </nav>
 
           <div className="mt-auto border-t border-border">
+            {isSandbox && (
+              <div className="px-6 py-4 border-b border-border bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-green-600" />
+                    <span className="text-xs font-semibold">WhatsApp API</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onToggleWhatsapp?.(!useWhatsapp)}
+                    className={cn(
+                      'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                      useWhatsapp ? 'bg-primary' : 'bg-input'
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform',
+                        useWhatsapp ? 'translate-x-[1.125rem]' : 'translate-x-0.5'
+                      )}
+                    />
+                  </button>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1 leading-tight">
+                  {useWhatsapp ? 'Using real WhatsApp' : 'Using Simulator and sandbox DB'}
+                </p>
+              </div>
+            )}
             <button
               type="button"
               onClick={onLogout}

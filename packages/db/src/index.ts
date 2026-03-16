@@ -43,7 +43,7 @@ export {
   updateAgentActive,
   updateSessionMemoryState
 } from './sessions'
-export { getUserMessages, saveMessage } from './messages'
+export { getUserMessages, saveMessage, getLastInboundTimestamp } from './messages'
 export { insertAgentDecision, listAgentDecisionsBySession } from './decisions'
 export { getSessionContext, type SessionContext } from './contexts'
 export {

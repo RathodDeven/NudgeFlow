@@ -1,6 +1,7 @@
 import {
   type DbUser,
   countUntouchedUsers,
+  createScheduledAction,
   ensureSession,
   getSessionContext,
   getUserById,
@@ -15,7 +16,7 @@ import { recordMessageInteraction } from '../services/interactions'
 import { applyMessageMemoryUpdate } from '../services/memory'
 import { loadTenantTemplateConfig } from '../services/tenant-channel'
 import { cancelScheduledVoiceCalls, scheduleVoiceCall } from '../services/voice-scheduling'
-import { buildTemplateVariables } from '../services/whatsapp-templates'
+import { sendTenantWhatsAppTemplate } from '../services/whatsapp-templates'
 import { eventLogger } from '../state'
 
 const startConversationForUser = async (params: {
@@ -36,33 +37,30 @@ const startConversationForUser = async (params: {
 
   const templateConfig = await loadTenantTemplateConfig()
   if (templateConfig) {
-    const variables = buildTemplateVariables(user, templateConfig.variableOrder)
-    const res = await fetch('http://localhost:3040/whatsapp/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    try {
+      const { providerMessageId } = await sendTenantWhatsAppTemplate({
         sessionId,
         toPhoneE164: user.phoneE164,
-        body: '',
-        templateName: templateConfig.templateId,
-        variables
+        user,
+        templateConfig: {
+          appName: templateConfig.appName,
+          source: templateConfig.source,
+          templateId: templateConfig.template.templateId,
+          variableOrder: templateConfig.template.variableOrder
+        }
       })
-    })
 
-    if (!res.ok) {
-      const err = await res.text()
-      throw new Error(`whatsapp_send_failed:${err}`)
+      await recordMessageInteraction(dbPool, {
+        sessionId,
+        direction: 'outbound',
+        body: `Template ${templateConfig.template.templateId} sent`,
+        channel: 'whatsapp',
+        providerMessageId
+      })
+      await applyMessageMemoryUpdate(dbPool, sessionId, `Template ${templateConfig.template.templateId} sent`)
+    } catch (error) {
+      throw new Error(`whatsapp_send_failed:${(error as Error).message}`)
     }
-
-    const gupshupRes = await res.json()
-    await recordMessageInteraction(dbPool, {
-      sessionId,
-      direction: 'outbound',
-      body: `Template ${templateConfig.templateId} sent`,
-      channel: 'whatsapp',
-      providerMessageId: gupshupRes.providerMessageId
-    })
-    await applyMessageMemoryUpdate(dbPool, sessionId, `Template ${templateConfig.templateId} sent`)
   }
 
   if (!skipVoiceCall && session) {
@@ -100,10 +98,14 @@ const sendBatchTemplates = async (
 export const registerOutreachRoutes = (app: FastifyInstance): void => {
   app.post('/users/:id/start-conversation', { preHandler: protectedHandler }, async (request, reply) => {
     const userId = (request.params as { id: string }).id
-    const body = request.body as { preferredCallAt?: string }
+    const body = request.body as { preferredCallAt?: string; skipVoiceCall?: boolean }
 
     try {
-      await startConversationForUser({ userId, preferredCallAt: body?.preferredCallAt })
+      await startConversationForUser({
+        userId,
+        preferredCallAt: body?.preferredCallAt,
+        skipVoiceCall: body?.skipVoiceCall
+      })
     } catch (error) {
       const message = (error as Error).message
       if (message === 'user_not_found') {
@@ -143,7 +145,29 @@ export const registerOutreachRoutes = (app: FastifyInstance): void => {
     const untouchedUsers = await listUntouchedUsers(dbPool, tid, body?.limit ?? 200)
 
     const runMode = body?.runMode ?? 'run_now'
-    const templateResult = await sendBatchTemplates(untouchedUsers)
+    const scheduledAt = runMode === 'schedule' ? body?.scheduledAt : undefined
+
+    let templateResult: {
+      triggered: number
+      failed: number
+      errors: Array<{ userId: string; reason: string }>
+    } = { triggered: 0, failed: 0, errors: [] }
+
+    if (runMode === 'run_now') {
+      templateResult = await sendBatchTemplates(untouchedUsers)
+    } else if (scheduledAt) {
+      for (const user of untouchedUsers) {
+        const sessionId = await ensureSession(dbPool, user.id, tid)
+        await createScheduledAction(dbPool, {
+          sessionId,
+          actionType: 'whatsapp_template',
+          dueAt: scheduledAt,
+          status: 'pending',
+          idempotencyKey: `whatsapp_template_${sessionId}_${scheduledAt}`
+        })
+        templateResult.triggered++
+      }
+    }
 
     let batch: {
       batchId: string

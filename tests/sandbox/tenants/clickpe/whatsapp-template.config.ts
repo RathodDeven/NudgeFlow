@@ -7,6 +7,7 @@ export type TenantWhatsAppConfig = {
   defaultTemplateKey: string
   appName: string
   source: string
+  ctaBaseUrl?: string
   templates: Record<string, TenantWhatsAppTemplate>
 }
 

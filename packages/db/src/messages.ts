@@ -29,3 +29,15 @@ export const getUserMessages = async (pool: pg.Pool, userId: string): Promise<Ch
   )
   return result.rows as ChatMessage[]
 }
+export const getLastInboundTimestamp = async (pool: pg.Pool, userId: string): Promise<Date | null> => {
+  const result = await pool.query(
+    `SELECT me.created_at
+     FROM message_events me
+     JOIN conversation_sessions cs ON me.session_id = cs.id
+     WHERE cs.user_id = $1 AND me.direction = 'inbound'
+     ORDER BY me.created_at DESC
+     LIMIT 1`,
+    [userId]
+  )
+  return result.rows[0]?.created_at ?? null
+}

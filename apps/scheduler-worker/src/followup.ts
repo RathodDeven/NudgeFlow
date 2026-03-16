@@ -1,15 +1,35 @@
 import {
-  createScheduledAction,
   getSessionContext,
   getSessionRecentMessages,
   insertAgentDecision,
   insertInteractionEvent,
   listRecentCallSummaries,
   saveMessage,
-  updateSessionMemoryState
+  updateSessionMemoryState,
+  createScheduledAction
 } from '@nudges/db'
 import { MEMORY_WINDOW_MESSAGES } from '@nudges/domain'
-import { dbPool } from './state'
+import { dbPool, env } from './state'
+
+export const sendWhatsAppTemplate = async (sessionId: string): Promise<void> => {
+  const session = await getSessionContext(dbPool, sessionId)
+  if (!session) throw new Error('session_not_found')
+
+  const res = await fetch(`${env.API_GATEWAY_URL || 'http://localhost:3000'}/users/${session.userId}/start-conversation`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+      // Internal auth if needed, assuming local for now
+    },
+    body: JSON.stringify({
+      skipVoiceCall: true
+    })
+  })
+
+  if (!res.ok) {
+    throw new Error(`api_gateway_failed:${await res.text()}`)
+  }
+}
 
 export const sendWhatsAppFollowup = async (sessionId: string): Promise<void> => {
   const session = await getSessionContext(dbPool, sessionId)
@@ -31,7 +51,18 @@ export const sendWhatsAppFollowup = async (sessionId: string): Promise<void> => 
         isAgentActive: session.isAgentActive,
         channel: session.channel,
         summaryState: session.summaryState,
-        compactFacts: session.compactFacts,
+        compactFacts: {
+          ...session.compactFacts,
+          inferred_intent: session.inferredIntent ?? null,
+          high_intent_flag: session.highIntentFlag ?? null,
+          last_call_disposition: session.lastCallDisposition ?? null,
+          last_call_at: session.lastCallAt ?? null,
+          follow_up_at: session.followUpAt ?? null,
+          call_summary_latest: session.callSummaryLatest ?? null,
+          call_notes_latest: session.callNotesLatest ?? null,
+          inference_extracted_data: session.inferenceExtractedData ?? {},
+          inference_context_details: session.inferenceContextDetails ?? {}
+        },
         messageCount: recentMessages.length,
         tokenEstimate: session.tokenEstimate,
         createdAt: nowStr,

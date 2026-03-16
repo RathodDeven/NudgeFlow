@@ -10,7 +10,6 @@ import {
 import { CsvUpload } from './components/CsvUpload'
 import { DashboardTab } from './components/DashboardTab'
 import { Login } from './components/Login'
-import { UserDetailView } from './components/UserDetailView'
 import { MainLayout } from './layouts/MainLayout'
 import { OverviewPage } from './pages/OverviewPage'
 import { UserDetailPage } from './pages/UserDetailPage'
@@ -39,21 +38,43 @@ export function App() {
   const [scheduleAtLocal, setScheduleAtLocal] = useState<string>('')
   const [dataError, setDataError] = useState<string>('')
   const [selectedUser, setSelectedUser] = useState<CsvUser | null>(null)
+  const [globalUseWhatsapp, setGlobalUseWhatsapp] = useState<boolean>(() => {
+    if (import.meta.env.VITE_ENABLE_SANDBOX !== 'true') return true
+    const saved = window.localStorage.getItem('nudgeflow_use_whatsapp')
+    return saved === 'true'
+  })
 
   const isAuthenticated = useMemo(() => Boolean(token), [token])
 
   const loadDashboard = useCallback(async (authToken: string): Promise<void> => {
     setDataError('')
-    const [funnel, sessionPayload, eventsPayload, untouched] = await Promise.all([
+    const [funnel, sessionPayload, eventsPayload, untouched, settingsPayload] = await Promise.all([
       authFetch<FunnelMetrics>('/metrics/funnel', authToken).catch(() => initialMetrics),
       authFetch<{ sessions: SessionItem[] }>('/dashboard/sessions', authToken).catch(() => ({
         sessions: []
       })),
       authFetch<{ events: EventItem[] }>('/dashboard/events', authToken).catch(() => ({ events: [] })),
-      getUntouchedCount(authToken).catch(() => ({ count: 0 }))
+      getUntouchedCount(authToken).catch(() => ({ count: 0 })),
+      // Sync local preference to backend on load
+      authFetch<{ ok: boolean; settings: { useWhatsappApi: boolean } }>(
+        '/tenants/settings',
+        authToken,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({
+            useWhatsappApi:
+              import.meta.env.VITE_ENABLE_SANDBOX !== 'true'
+                ? true
+                : window.localStorage.getItem('nudgeflow_use_whatsapp') === 'true'
+          })
+        }
+      ).catch(() => ({ ok: false, settings: null }))
     ])
 
     setMetrics(funnel)
+    if (settingsPayload.ok && settingsPayload.settings) {
+      setGlobalUseWhatsapp(settingsPayload.settings.useWhatsappApi)
+    }
     setSessions(sessionPayload.sessions)
     setEvents(eventsPayload.events)
     setUntouchedCount(untouched.count)
@@ -240,6 +261,21 @@ export function App() {
     setTimeout(() => setDataError(''), 3000)
   }
 
+  const handleToggleWhatsapp = async (value: boolean) => {
+    setGlobalUseWhatsapp(value)
+    window.localStorage.setItem('nudgeflow_use_whatsapp', String(value))
+    if (token) {
+      try {
+        await authFetch('/tenants/settings', token, {
+          method: 'PATCH',
+          body: JSON.stringify({ useWhatsappApi: value })
+        })
+      } catch (err) {
+        console.error('Failed to sync WhatsApp toggle', err)
+      }
+    }
+  }
+
   const handleMarkCalled = (taskId: string) => {
     setPendingTasks(prev => prev.map(t => (t.id === taskId ? { ...t, called: true } : t)))
     setDataError('Call marked as completed!')
@@ -280,6 +316,8 @@ export function App() {
       setActiveTab={setActiveTab}
       onLogout={logout}
       dataError={dataError}
+      useWhatsapp={globalUseWhatsapp}
+      onToggleWhatsapp={handleToggleWhatsapp}
     >
       {selectedUser ? (
         <UserDetailPage
@@ -290,6 +328,7 @@ export function App() {
           pendingTasks={pendingTasks}
           onApprove={handleApprove}
           onReject={handleReject}
+          globalUseWhatsapp={globalUseWhatsapp}
         />
       ) : (
         <>

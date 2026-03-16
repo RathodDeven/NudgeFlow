@@ -45,7 +45,8 @@ export const buildTemplateVariables = (user: DbUser, variableOrder: string[]): R
     pending_step: resolvePendingStep(user.currentStage),
     application_id: user.partnerCaseId ?? user.externalUserId,
     pending_document: resolvePendingDocument(user),
-    disbursement_amount: Number.isFinite(parsedAmount) ? parsedAmount.toLocaleString('en-IN') : '0'
+    disbursement_amount: Number.isFinite(parsedAmount) ? parsedAmount.toLocaleString('en-IN') : '0',
+    mob_num: user.phoneE164
   }
 
   const ordered: Record<string, string> = {}
@@ -55,4 +56,34 @@ export const buildTemplateVariables = (user: DbUser, variableOrder: string[]): R
 
   if (variableOrder.length === 0) return values
   return ordered
+}
+
+export const sendTenantWhatsAppTemplate = async (params: {
+  sessionId: string
+  toPhoneE164: string
+  user: DbUser
+  templateConfig: { appName: string; source: string; templateId: string; variableOrder: string[] }
+}): Promise<{ providerMessageId: string }> => {
+  const variables = buildTemplateVariables(params.user, params.templateConfig.variableOrder)
+  const res = await fetch('http://localhost:3040/whatsapp/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sessionId: params.sessionId,
+      toPhoneE164: params.toPhoneE164,
+      body: '',
+      templateName: params.templateConfig.templateId,
+      variables,
+      appName: params.templateConfig.appName,
+      source: params.templateConfig.source
+    })
+  })
+
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`whatsapp_send_failed:${err}`)
+  }
+
+  const data = (await res.json()) as { providerMessageId: string }
+  return data
 }

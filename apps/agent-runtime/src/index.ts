@@ -25,7 +25,8 @@ const app = Fastify({
         ignore: 'pid,hostname'
       }
     }
-  }
+  },
+  disableRequestLogging: true
 })
 
 app.register(fastifyCors, {
@@ -84,6 +85,7 @@ app.post('/agent/respond', async (request, reply) => {
   })
 
   const guardrail = guardOutboundMessage(replyResult.llmText)
+  const sanitizedLlmText = guardrail.sanitizedMessage ?? replyResult.llmText
   const payloadPlainText = guardrail.sanitizedMessage
     ? replyResult.payloadPlainText.replace(replyResult.llmText, guardrail.sanitizedMessage)
     : replyResult.payloadPlainText
@@ -106,6 +108,10 @@ app.post('/agent/respond', async (request, reply) => {
     })
   }
 
+  const finalWhatsappPayload = replyResult.whatsappPayload
+    ? { ...replyResult.whatsappPayload, body: sanitizedLlmText }
+    : undefined
+
   return generateReplyOutputSchema.parse({
     body: payloadPlainText,
     language: inboundLanguage,
@@ -113,7 +119,8 @@ app.post('/agent/respond', async (request, reply) => {
     usedModel: replyResult.usedModel,
     route: guardrail.allowed && !replyResult.isRejected ? replyResult.route : 'reject',
     guardrailNotes: guardrail.reasons,
-    memoryDelta
+    memoryDelta,
+    whatsappPayload: finalWhatsappPayload
   })
 })
 

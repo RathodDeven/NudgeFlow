@@ -20,7 +20,7 @@ export const conversationSessionSchema = z.object({
   isAgentActive: z.boolean().default(true),
   channel: channelSchema.default('whatsapp'),
   summaryState: summaryStateSchema,
-  compactFacts: z.record(z.string(), z.string()),
+  compactFacts: z.record(z.string(), z.unknown()),
   messageCount: z.number().int().nonnegative(),
   tokenEstimate: z.number().int().nonnegative(),
   createdAt: z.string().datetime(),

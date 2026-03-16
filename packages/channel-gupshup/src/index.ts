@@ -4,54 +4,66 @@ export type GupshupClientConfig = {
   apiKey: string
   appName: string
   baseUrl: string
+  source?: string // Actual phone number
 }
 
-export const toTemplatePayload = (request: SendMessageRequest) => {
-  if (request.templateName) {
-    return {
-      channel: 'whatsapp',
-      source: 'NudgeFlow',
-      destination: request.toPhoneE164,
-      message: {
-        type: 'template',
-        template: {
-          id: request.templateName,
-          params: request.variables ? Object.values(request.variables) : []
-        }
-      },
-      src: 'nudgeflow-mvp'
-    }
-  }
 
-  return {
-    channel: 'whatsapp',
-    source: 'NudgeFlow',
-    destination: request.toPhoneE164,
-    message: {
-      type: 'text',
-      text: request.body
-    },
-    src: 'nudgeflow-mvp'
-  }
-}
 
 export const sendWhatsAppMessage = async (
   config: GupshupClientConfig,
   request: SendMessageRequest
 ): Promise<{ providerMessageId: string; status: string }> => {
-  const payload = toTemplatePayload(request)
-  const response = await fetch(`${config.baseUrl}/sm/api/v1/msg`, {
+  const cleanSource = (config.source || config.appName).replace(/^\+/, '')
+  const cleanDestination = request.toPhoneE164.replace(/^\+/, '')
+
+  const isTemplate = !!request.templateName
+  const endpoint = isTemplate
+    ? `${config.baseUrl}/wa/api/v1/template/msg`
+    : `${config.baseUrl}/wa/api/v1/msg`
+
+  const bodyParams = new URLSearchParams({
+    channel: 'whatsapp',
+    source: cleanSource,
+    destination: cleanDestination,
+    'src.name': config.appName
+  })
+
+  if (isTemplate) {
+    bodyParams.append(
+      'template',
+      JSON.stringify({
+        id: request.templateName,
+        params: request.templateParams ?? (request.variables ? Object.values(request.variables) : [])
+      })
+    )
+  } else if (request.whatsappPayload?.type === 'cta_url') {
+    bodyParams.append(
+      'message',
+      JSON.stringify({
+        type: 'cta_url',
+        body: request.whatsappPayload.body,
+        display_text: request.whatsappPayload.display_text,
+        url: request.whatsappPayload.url,
+        footer: request.whatsappPayload.footer || 'Thank you'
+      })
+    )
+  } else {
+    bodyParams.append(
+      'message',
+      JSON.stringify({
+        type: 'text',
+        text: request.body || request.whatsappPayload?.body || ''
+      })
+    )
+  }
+
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
       apikey: config.apiKey
     },
-    body: new URLSearchParams({
-      channel: 'whatsapp',
-      source: config.appName,
-      destination: request.toPhoneE164,
-      message: JSON.stringify(payload.message)
-    })
+    body: bodyParams
   })
 
   if (!response.ok) {
@@ -66,23 +78,70 @@ export const sendWhatsAppMessage = async (
   }
 }
 
+export const markMessageAsRead = async (
+  config: GupshupClientConfig,
+  messageId: string
+): Promise<boolean> => {
+  const response = await fetch(
+    `${config.baseUrl}/wa/api/v1/msg/${config.appName}/read/${messageId}`,
+    {
+      method: 'PUT',
+      headers: {
+        apikey: config.apiKey
+      }
+    }
+  )
+
+  return response.ok
+}
+
+export const sendTypingIndicator = async (
+  config: GupshupClientConfig,
+  messageId: string
+): Promise<boolean> => {
+  // Gupshup allows sending typing indicator via a similar PUT endpoint
+  const response = await fetch(
+    `${config.baseUrl}/wa/api/v1/msg/${config.appName}/typing/${messageId}`,
+    {
+      method: 'PUT',
+      headers: {
+        apikey: config.apiKey
+      }
+    }
+  )
+
+  return response.ok
+}
+
 export type InboundWebhook = {
   app: string
-  source: string
+  timestamp: number
+  version: number
   type: string
   payload: {
+    id: string
+    source: string
+    type: string
+    payload?: {
+      text?: string
+      type?: string
+      postbackText?: string
+    }
     sender: {
       phone: string
+      name?: string
     }
     text?: string
-    id?: string
   }
 }
 
 export const parseInboundWebhook = (
   input: InboundWebhook
-): { phone: string; text: string; providerMessageId?: string } => ({
-  phone: input.payload.sender.phone,
-  text: input.payload.text ?? '',
-  providerMessageId: input.payload.id
-})
+): { phone: string; text: string; providerMessageId?: string } => {
+  const text = input.payload.text ?? input.payload.payload?.text ?? ''
+  return {
+    phone: input.payload.sender.phone,
+    text,
+    providerMessageId: input.payload.id
+  }
+}

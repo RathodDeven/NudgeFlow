@@ -4,7 +4,7 @@ import { sendMessageRequestSchema } from '@nudges/domain'
 import Fastify from 'fastify'
 
 const env = loadEnv()
-const app = Fastify({ logger: true })
+const app = Fastify({ logger: true, disableRequestLogging: true })
 
 app.get('/health', async () => ({ ok: true, service: 'channel-whatsapp' }))
 
@@ -19,18 +19,25 @@ app.post('/whatsapp/send', async (request, reply) => {
     return reply.status(400).send({ error: payload.error.flatten() })
   }
 
-  if (!env.GUPSHUP_API_KEY || !env.GUPSHUP_APP_NAME) {
+  if (!env.GUPSHUP_API_KEY) {
     return reply.send({
       status: 'mock_sent',
       providerMessageId: crypto.randomUUID()
     })
   }
 
+  if (!payload.data.appName) {
+    return reply
+      .status(400)
+      .send({ error: 'appName is required in payload when global GUPSHUP_APP_NAME is missing' })
+  }
+
   const response = await sendWhatsAppMessage(
     {
       apiKey: env.GUPSHUP_API_KEY,
-      appName: env.GUPSHUP_APP_NAME,
-      baseUrl: env.GUPSHUP_BASE_URL
+      appName: payload.data.appName,
+      baseUrl: env.GUPSHUP_BASE_URL,
+      source: payload.data.source
     },
     payload.data
   )

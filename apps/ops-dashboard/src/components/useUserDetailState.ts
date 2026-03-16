@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { authFetch } from '../api/client'
 import type { CsvUser, DbChatMessage, PendingHITLTask } from '../types'
 import { useManualMessaging } from './useManualMessaging'
@@ -10,14 +10,20 @@ type UserDetailStateParams = {
   token: string
   pendingTasks: PendingHITLTask[]
   onStatusChange: (userId: string, newStatus: string) => void
+  globalUseWhatsapp: boolean
 }
 
-export const useUserDetailState = ({ user, token, pendingTasks, onStatusChange }: UserDetailStateParams) => {
+export const useUserDetailState = ({
+  user,
+  token,
+  pendingTasks,
+  onStatusChange,
+  globalUseWhatsapp
+}: UserDetailStateParams) => {
   const isSandbox = import.meta.env.VITE_ENABLE_SANDBOX === 'true'
   const [messages, setMessages] = useState<DbChatMessage[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isAgentActive, setIsAgentActive] = useState(true)
-  const [useWhatsapp, setUseWhatsapp] = useState(false)
 
   const userTasks = pendingTasks.filter(
     t => t.externalUserId === user.customerId || t.externalUserId === user.id
@@ -30,6 +36,8 @@ export const useUserDetailState = ({ user, token, pendingTasks, onStatusChange }
     })
   }
 
+  const [lastInboundAt, setLastInboundAt] = useState<string | null>(null)
+
   const sandbox = useSandboxSimulation({
     user,
     messages,
@@ -41,44 +49,43 @@ export const useUserDetailState = ({ user, token, pendingTasks, onStatusChange }
     user,
     token,
     isSandbox,
-    useWhatsapp,
-    setUseWhatsapp,
+    useWhatsapp: globalUseWhatsapp,
+    setUseWhatsapp: () => {}, // Sidebar handles toggle now
     setMessages,
     sendMessageToApi
   })
 
   const voiceStatus = useVoiceStatus({ userId: user.id, token })
 
+  const refreshData = useCallback(async () => {
+    try {
+      const [msgRes, sessionRes, windowRes] = await Promise.all([
+        authFetch<{ messages: DbChatMessage[] }>(`/users/${user.id}/messages`, token),
+        authFetch<{ ok: boolean; isAgentActive: boolean }>(`/users/${user.id}/session`, token),
+        authFetch<{ lastInboundAt: string | null }>(`/users/${user.id}/session-window`, token)
+      ])
+
+      setMessages(msgRes.messages)
+      if (sessionRes.ok) setIsAgentActive(sessionRes.isAgentActive)
+      setLastInboundAt(windowRes.lastInboundAt)
+    } catch (err) {
+      console.error('Failed to refresh user data', err)
+    }
+  }, [user.id, token])
+
   useEffect(() => {
-    let mounted = true
     setIsLoading(true)
-    authFetch<{ messages: DbChatMessage[] }>(`/users/${user.id}/messages`, token)
-      .then(res => {
-        if (mounted) {
-          setMessages(res.messages)
-        }
-      })
-      .catch((err: unknown) => {
-        console.error('Failed to load messages', err)
-      })
+    refreshData().finally(() => {
+      setIsLoading(false)
+    })
 
-    authFetch<{ ok: boolean; isAgentActive: boolean }>(`/users/${user.id}/session`, token)
-      .then(res => {
-        if (mounted && res.ok) setIsAgentActive(res.isAgentActive)
-      })
-      .catch((err: unknown) => {
-        console.error('Failed to load agent status', err)
-      })
-      .finally(() => {
-        if (mounted) setIsLoading(false)
-      })
-
+    const interval = setInterval(refreshData, 5000)
     voiceStatus.refreshVoiceStatus()
 
     return () => {
-      mounted = false
+      clearInterval(interval)
     }
-  }, [token, user.id, voiceStatus.refreshVoiceStatus])
+  }, [refreshData, voiceStatus.refreshVoiceStatus])
 
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value
@@ -118,6 +125,7 @@ export const useUserDetailState = ({ user, token, pendingTasks, onStatusChange }
     handleAgentToggle,
     sandbox,
     manual,
-    voiceStatus
+    voiceStatus,
+    lastInboundAt
   }
 }

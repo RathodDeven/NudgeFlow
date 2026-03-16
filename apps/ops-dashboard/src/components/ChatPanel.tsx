@@ -2,6 +2,7 @@ import type { DbChatMessage } from '../types'
 import { ChatBubble } from './ChatBubble'
 import { MessageSquare, Bot } from 'lucide-react'
 import { cn } from "@/lib/utils"
+import { useEffect, useRef } from 'react'
 
 export type ChatPanelProps = {
   isLoading: boolean
@@ -22,6 +23,18 @@ export const ChatPanel = ({
   onToggleAgent,
   manualPanel
 }: ChatPanelProps) => {
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+    // Triggers for auto-scroll
+    void messages
+    void isLoading
+    void isSending
+  }, [messages, isLoading, isSending])
+
   return (
     <div className="flex-1 min-h-0 flex flex-col gap-4">
       <div className="flex items-center justify-between border-b pb-4">
@@ -45,7 +58,10 @@ export const ChatPanel = ({
         </button>
       </div>
 
-      <div className="flex-1 min-h-[400px] overflow-y-auto rounded-xl border bg-muted/30 p-4 shadow-inner flex flex-col gap-4">
+      <div 
+        ref={scrollRef}
+        className="h-[500px] overflow-y-auto rounded-xl border bg-muted/30 p-4 shadow-inner flex flex-col gap-4 scroll-smooth"
+      >
         {isLoading ? (
           <div className="flex-1 flex items-center justify-center">
             <p className="text-xs text-muted-foreground animate-pulse">Loading messages...</p>

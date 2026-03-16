@@ -41,14 +41,26 @@ export const callSummarySchema = z.object({
   occurredAt: z.string().datetime().optional()
 })
 
+export const whatsappPayloadSchema = z.object({
+  body: z.string(),
+  type: z.literal('cta_url').optional(),
+  display_text: z.string().optional(),
+  url: z.string().optional(),
+  footer: z.string().optional()
+})
+
 export const sendMessageRequestSchema = z.object({
   sessionId: z.string().uuid(),
   toPhoneE164: z.string(),
   taskId: z.string().uuid().optional(),
-  body: z.string(),
+  body: z.string().optional(),
   language: z.string().optional(),
   templateName: z.string().optional(),
-  variables: z.record(z.string(), z.string()).optional()
+  variables: z.record(z.string(), z.string()).optional(),
+  templateParams: z.array(z.string()).optional(),
+  appName: z.string().optional(),
+  source: z.string().optional(),
+  whatsappPayload: whatsappPayloadSchema.optional()
 })
 
 export const generateReplyInputSchema = z.object({
@@ -73,7 +85,8 @@ export const generateReplyOutputSchema = z.object({
   route: z.enum(['recovery', 'support', 'reject', 'handoff']),
   guardrailNotes: z.array(z.string()).default([]),
   suggestedNextFollowupAt: z.string().datetime().optional(),
-  memoryDelta: memoryDeltaSchema
+  memoryDelta: memoryDeltaSchema,
+  whatsappPayload: whatsappPayloadSchema.optional()
 })
 
 export const summarizeCallInputSchema = z.object({

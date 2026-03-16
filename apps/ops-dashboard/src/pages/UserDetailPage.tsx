@@ -27,6 +27,7 @@ interface UserDetailPageProps {
   pendingTasks: PendingHITLTask[]
   onApprove: (taskId: string) => void
   onReject: (taskId: string) => void
+  globalUseWhatsapp: boolean
 }
 
 export function UserDetailPage({
@@ -36,7 +37,8 @@ export function UserDetailPage({
   onStatusChange,
   pendingTasks,
   onApprove,
-  onReject
+  onReject,
+  globalUseWhatsapp
 }: UserDetailPageProps) {
   const [activeTab, setActiveTab] = useState<'chat' | 'info' | 'voice'>('chat')
   const [preferredCallAt, setPreferredCallAt] = useState('')
@@ -51,8 +53,9 @@ export function UserDetailPage({
     handleAgentToggle,
     sandbox,
     manual,
-    voiceStatus
-  } = useUserDetailState({ user, token, pendingTasks, onStatusChange })
+    voiceStatus,
+    lastInboundAt
+  } = useUserDetailState({ user, token, pendingTasks, onStatusChange, globalUseWhatsapp })
 
   const preferredCallAtIso = preferredCallAt ? new Date(preferredCallAt).toISOString() : undefined
 
@@ -137,10 +140,11 @@ export function UserDetailPage({
                       <ManualMessagePanel
                         isSandbox={isSandbox}
                         useWhatsapp={manual.useWhatsapp}
-                        onToggleWhatsapp={manual.setUseWhatsapp}
+                        lastInboundAt={lastInboundAt}
                         onInsertTemplate={() =>
                           manual.handleSendManualMessage(
-                            `Namaste ${user.name}!\n\nWe saw you dropped off during the ${user.status} step. Do you need any help?`
+                            undefined, // No body override
+                            'step_completion_document_required' // Send this template
                           )
                         }
                         status={manual.manualStatus}

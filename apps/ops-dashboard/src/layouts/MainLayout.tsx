@@ -7,10 +7,20 @@ interface MainLayoutProps {
   setActiveTab: (tab: string) => void
   onLogout: () => void
   dataError?: string
+  useWhatsapp?: boolean
+  onToggleWhatsapp?: (value: boolean) => void
 }
 
-export function MainLayout({ children, activeTab, setActiveTab, onLogout, dataError }: MainLayoutProps) {
-  const isProduction = useMemo(() => process.env.NODE_ENV === 'production', [])
+export function MainLayout({
+  children,
+  activeTab,
+  setActiveTab,
+  onLogout,
+  dataError,
+  useWhatsapp,
+  onToggleWhatsapp
+}: MainLayoutProps) {
+  const isProduction = useMemo(() => import.meta.env.VITE_ENABLE_SANDBOX !== 'true', [])
 
   return (
     <div className="flex min-h-screen bg-background text-foreground font-sans antialiased">
@@ -18,6 +28,8 @@ export function MainLayout({ children, activeTab, setActiveTab, onLogout, dataEr
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onLogout={onLogout}
+        useWhatsapp={useWhatsapp}
+        onToggleWhatsapp={onToggleWhatsapp}
         className="hidden md:flex"
       />
 

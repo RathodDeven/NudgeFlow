@@ -3,7 +3,7 @@ import { loanStageSchema } from '@nudges/domain'
 import Fastify from 'fastify'
 
 const env = loadEnv()
-const app = Fastify({ logger: true })
+const app = Fastify({ logger: true, disableRequestLogging: true })
 
 app.get('/health', async () => ({ ok: true, service: 'status-sync-worker' }))
 

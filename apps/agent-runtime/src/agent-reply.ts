@@ -38,6 +38,13 @@ export type AgentReplyResult = {
   route: 'recovery' | 'support' | 'reject' | 'handoff'
   isEscalated: boolean
   isRejected: boolean
+  whatsappPayload?: {
+    body: string
+    type?: 'cta_url'
+    display_text?: string
+    url?: string
+    footer?: string
+  }
 }
 
 const responseSchema = z.object({
@@ -101,8 +108,8 @@ export const generateAgentReply = async (input: AgentReplyInput): Promise<AgentR
     `Persisted summary state: ${JSON.stringify(input.session.summaryState)}`,
     `Compact facts: ${JSON.stringify(input.session.compactFacts)}`,
     `Stage: ${input.session.summaryState.stageContext}`,
-    `Exact mobile number: ${input.session.compactFacts.mobile_number || 'unknown'}`,
-    'Task: 1. Review the "Chat History" to understand exactly what was just said. 2. If the user asks a meta-question (e.g., "What was our last topic?", "What did you say?"), answer it based ONLY on the history. 3. Address any specific support questions concisely. 4. Classify intent and generate a contextual response. Do not repeat introductions if already done.'
+    `Exact 10-digit mobile number: ${(input.session.compactFacts.mobile_number as string || '').slice(-10)}`,
+    'Task: 1. Review the "Chat History" and "Current Inbound message". 2. If the user is just greeting (e.g., "Hi", "Hello", "Hey"), respond with a VERY SHORT, friendly greeting (e.g., "Hi! How can I help you today?"). 3. CRITICAL: For a simple greeting, DO NOT mention loans, reserved amounts, or pending steps. 4. If they ask a specific support question, answer it concisely. 5. Only if they ask about their status or if the conversation has already moved past greetings, provide a nudge about their current stage. 6. Classify intent and decide if a CTA button is helpful now. NEVER include a CTA button for a simple greeting.'
   ].join('\n')
 
   const utilitiesContext = buildUtilitiesContext(
@@ -110,6 +117,9 @@ export const generateAgentReply = async (input: AgentReplyInput): Promise<AgentR
     input.session.summaryState.stageContext
   )
   const systemPrompt = buildSystemPrompt(input.promptContext, utilitiesContext)
+
+  console.log(`[agent-runtime] System Prompt for ${input.tenantId}:\n${systemPrompt}`)
+  console.log(`[agent-runtime] User Prompt:\n${renderedUserPrompt}`)
 
   const response = await generateStructuredWithOpenAI({
     apiKey: input.env.OPENAI_API_KEY,
@@ -120,6 +130,8 @@ export const generateAgentReply = async (input: AgentReplyInput): Promise<AgentR
     userPrompt: renderedUserPrompt
   })
 
+  console.log(`[agent-runtime] LLM Raw Response:`, JSON.stringify(response.data, null, 2))
+
   const {
     intent,
     requiresEscalation,
@@ -128,6 +140,7 @@ export const generateAgentReply = async (input: AgentReplyInput): Promise<AgentR
     regionalResponseStrategy,
     whatsappPayload
   } = response.data as z.infer<typeof responseSchema>
+
 
   llmText = whatsappPayload.body
   usedModel = response.model
@@ -171,5 +184,18 @@ Return ONLY the response text. Do not include any prefixes like "Assistant:" or 
     route = intent
   }
 
-  return { payloadPlainText, llmText, usedModel, route, isEscalated, isRejected }
+  return {
+    payloadPlainText,
+    llmText,
+    usedModel,
+    route,
+    isEscalated,
+    isRejected,
+    whatsappPayload: {
+      body: llmText,
+      type: whatsappPayload.button ? 'cta_url' : undefined,
+      display_text: whatsappPayload.button?.buttonLabel,
+      url: whatsappPayload.button?.url,
+    }
+  }
 }

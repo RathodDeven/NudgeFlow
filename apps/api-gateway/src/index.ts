@@ -14,6 +14,7 @@ import { registerVoiceRoutes } from './routes/voice'
 import { registerWebhookRoutes } from './routes/webhooks'
 
 const app = Fastify({
+  disableRequestLogging: true,
   logger: {
     transport: {
       target: 'pino-pretty',

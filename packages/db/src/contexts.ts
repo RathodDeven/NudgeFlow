@@ -21,6 +21,15 @@ export type SessionContext = {
   compactFacts: Record<string, unknown>
   messageCount: number
   tokenEstimate: number
+  inferredIntent: string | null
+  highIntentFlag: string | null
+  lastCallAt: string | null
+  lastCallDisposition: string | null
+  followUpAt: string | null
+  callSummaryLatest: string | null
+  callNotesLatest: string | null
+  inferenceExtractedData: Record<string, unknown>
+  inferenceContextDetails: Record<string, unknown>
 }
 
 export const getSessionContext = async (pool: pg.Pool, sessionId: string): Promise<SessionContext | null> => {
@@ -44,8 +53,16 @@ export const getSessionContext = async (pool: pg.Pool, sessionId: string): Promi
        cs.is_agent_active AS "isAgentActive",
        cs.summary_state AS "summaryState",
        cs.compact_facts AS "compactFacts",
-       cs.message_count AS "messageCount",
-       cs.token_estimate AS "tokenEstimate"
+       cs.token_estimate AS "tokenEstimate",
+       lc.inferred_intent AS "inferredIntent",
+       lc.high_intent_flag AS "highIntentFlag",
+       lc.last_call_at AS "lastCallAt",
+       lc.last_call_disposition AS "lastCallDisposition",
+       lc.follow_up_at AS "followUpAt",
+       lc.call_summary_latest AS "callSummaryLatest",
+       lc.call_notes_latest AS "callNotesLatest",
+       lc.inference_extracted_data AS "inferenceExtractedData",
+       lc.inference_context_details AS "inferenceContextDetails"
      FROM conversation_sessions cs
      JOIN tenants t ON cs.tenant_id = t.id
      JOIN user_profiles up ON cs.user_id = up.id
