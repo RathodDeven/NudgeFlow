@@ -1,12 +1,12 @@
 import {
+  createScheduledAction,
   getSessionContext,
   getSessionRecentMessages,
   insertAgentDecision,
   insertInteractionEvent,
   listRecentCallSummaries,
   saveMessage,
-  updateSessionMemoryState,
-  createScheduledAction
+  updateSessionMemoryState
 } from '@nudges/db'
 import { MEMORY_WINDOW_MESSAGES } from '@nudges/domain'
 import { dbPool, env } from './state'
@@ -15,16 +15,19 @@ export const sendWhatsAppTemplate = async (sessionId: string): Promise<void> => 
   const session = await getSessionContext(dbPool, sessionId)
   if (!session) throw new Error('session_not_found')
 
-  const res = await fetch(`${env.API_GATEWAY_URL || 'http://localhost:3000'}/users/${session.userId}/start-conversation`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-      // Internal auth if needed, assuming local for now
-    },
-    body: JSON.stringify({
-      skipVoiceCall: true
-    })
-  })
+  const res = await fetch(
+    `${env.API_GATEWAY_URL || 'http://localhost:3000'}/users/${session.userId}/start-conversation`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+        // Internal auth if needed, assuming local for now
+      },
+      body: JSON.stringify({
+        skipVoiceCall: true
+      })
+    }
+  )
 
   if (!res.ok) {
     throw new Error(`api_gateway_failed:${await res.text()}`)

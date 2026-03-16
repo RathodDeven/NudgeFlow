@@ -37,8 +37,8 @@ app.register(fastifyCors, {
 const TENANT_ID = process.env.TENANT_ID ?? 'clickpe'
 const promptContext = await loadPromptContext(TENANT_ID)
 
-if (!promptContext.tenantChannel && !promptContext.globalConstraints) {
-  throw new Error(`[agent-runtime] Critical: No channel rules found or loaded for ${TENANT_ID}`)
+if (!promptContext.agentPrompt) {
+  throw new Error(`[agent-runtime] Critical: No agent instructions found for ${TENANT_ID}`)
 }
 
 console.info(`[agent-runtime] Loaded Global Prompts and Tenant: ${TENANT_ID}`)
@@ -69,7 +69,7 @@ app.post('/agent/respond', async (request, reply) => {
   )
   const inboundText = lastInboundMessage?.body ?? ''
 
-  const inboundLanguage = await detectInboundLanguage(inboundText, env.SARVAM_API_KEY, env.SARVAM_BASE_URL)
+  const inboundLanguage = await detectInboundLanguage(inboundText)
   app.log.info({ msg: 'Language Detection completed', inboundLanguage })
 
   const replyResult = await generateAgentReply({
@@ -79,7 +79,6 @@ app.post('/agent/respond', async (request, reply) => {
     inboundText,
     inboundLanguage,
     boundedHistory,
-    callSummaries,
     fallbackText: buildFallbackReply('recovery', 'Please continue your application.'),
     promptContext
   })

@@ -1,5 +1,5 @@
+import { Loader2, Lock, User } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
-import { Lock, User, Loader2 } from 'lucide-react'
 
 interface LoginProps {
   onLogin: (token: string) => Promise<void>
@@ -54,7 +54,10 @@ export function Login({ onLogin }: LoginProps) {
 
           <form className="p-8 pt-0 space-y-6" onSubmit={handleLogin}>
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-foreground flex items-center gap-2" htmlFor="username">
+              <label
+                className="text-sm font-semibold text-foreground flex items-center gap-2"
+                htmlFor="username"
+              >
                 <User className="w-4 h-4 text-muted-foreground" />
                 Username
               </label>
@@ -69,7 +72,10 @@ export function Login({ onLogin }: LoginProps) {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-foreground flex items-center gap-2" htmlFor="password">
+              <label
+                className="text-sm font-semibold text-foreground flex items-center gap-2"
+                htmlFor="password"
+              >
                 <Lock className="w-4 h-4 text-muted-foreground" />
                 Password
               </label>

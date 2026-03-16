@@ -45,7 +45,9 @@ export function UsersPage({
   const [scheduleAtLocal, setScheduleAtLocal] = useState('')
 
   const untouchedUsers = useMemo(() => {
-    return csvUsers.filter(u => (!u.status || u.status === 'FRESH_LOAN') && !u.lastCallAt && !u.inferredIntent)
+    return csvUsers.filter(
+      u => (!u.status || u.status === 'FRESH_LOAN') && !u.lastCallAt && !u.inferredIntent
+    )
   }, [csvUsers])
 
   const displayedUsers = activeTab === 'all' ? csvUsers : untouchedUsers
@@ -96,7 +98,9 @@ export function UsersPage({
           onClick={() => setActiveTab('all')}
           className={cn(
             'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all',
-            activeTab === 'all' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted'
+            activeTab === 'all'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:bg-muted'
           )}
         >
           <UsersIcon className="h-4 w-4" />
@@ -108,7 +112,9 @@ export function UsersPage({
           onClick={() => setActiveTab('untouched')}
           className={cn(
             'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all',
-            activeTab === 'untouched' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted'
+            activeTab === 'untouched'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:bg-muted'
           )}
         >
           <UserPlus className="h-4 w-4" />
@@ -140,8 +146,8 @@ export function UsersPage({
             <div className="space-y-4 text-left">
               <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
                 <p className="text-sm text-muted-foreground mb-3">
-                  Start outreach for <span className="font-bold text-foreground">{untouchedCount}</span> users who
-                  haven't been contacted yet.
+                  Start outreach for <span className="font-bold text-foreground">{untouchedCount}</span> users
+                  who haven't been contacted yet.
                 </p>
                 <button
                   type="button"
@@ -263,7 +269,7 @@ export function UsersPage({
                       user.highIntentFlag === 'yes' && 'bg-green-50/30 hover:bg-green-100/30'
                     )}
                     onClick={() => onUserSelect(user)}
-                    onKeyDown={(e) => {
+                    onKeyDown={e => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         onUserSelect(user)
                       }

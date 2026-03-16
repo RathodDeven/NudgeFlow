@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, LogOut, Menu, Settings, Users, X, Layers, MessageSquare } from 'lucide-react'
+import { Layers, LayoutDashboard, LogOut, Menu, MessageSquare, Settings, Users, X } from 'lucide-react'
 import { useState } from 'react'
 
 interface SidebarProps {
@@ -73,7 +73,9 @@ export function Sidebar({
                   <Icon
                     className={cn(
                       'h-5 w-5 mr-3 shrink-0',
-                      activeTab === item.id ? 'text-primary' : 'text-muted-foreground transition-colors group-hover:text-foreground'
+                      activeTab === item.id
+                        ? 'text-primary'
+                        : 'text-muted-foreground transition-colors group-hover:text-foreground'
                     )}
                   />
                   {item.label}

@@ -1,8 +1,8 @@
+import { cn } from '@/lib/utils'
+import { Bot, MessageSquare } from 'lucide-react'
+import { useEffect, useRef } from 'react'
 import type { DbChatMessage } from '../types'
 import { ChatBubble } from './ChatBubble'
-import { MessageSquare, Bot } from 'lucide-react'
-import { cn } from "@/lib/utils"
-import { useEffect, useRef } from 'react'
 
 export type ChatPanelProps = {
   isLoading: boolean
@@ -42,23 +42,23 @@ export const ChatPanel = ({
           <MessageSquare className="h-5 w-5 text-primary" />
           <h3 className="text-lg font-semibold tracking-tight">Conversation History</h3>
         </div>
-        
+
         <button
           type="button"
           onClick={onToggleAgent}
           className={cn(
-            "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold transition-all border",
-            isAgentActive 
-              ? "bg-green-50 text-green-700 border-green-200" 
-              : "bg-muted text-muted-foreground border-transparent hover:bg-accent"
+            'inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold transition-all border',
+            isAgentActive
+              ? 'bg-green-50 text-green-700 border-green-200'
+              : 'bg-muted text-muted-foreground border-transparent hover:bg-accent'
           )}
         >
-          <Bot className={cn("h-3.5 w-3.5", isAgentActive ? "animate-pulse" : "")} />
-          {isAgentActive ? "AI Agent Active" : "AI Agent Paused"}
+          <Bot className={cn('h-3.5 w-3.5', isAgentActive ? 'animate-pulse' : '')} />
+          {isAgentActive ? 'AI Agent Active' : 'AI Agent Paused'}
         </button>
       </div>
 
-      <div 
+      <div
         ref={scrollRef}
         className="h-[500px] overflow-y-auto rounded-xl border bg-muted/30 p-4 shadow-inner flex flex-col gap-4 scroll-smooth"
       >

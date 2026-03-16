@@ -1,6 +1,6 @@
 import { loadKnowledgeSet } from '@nudges/knowledge-runtime'
-import { dbPool, getTenantId, protectedHandler } from '../context'
 import type { FastifyInstance } from 'fastify'
+import { dbPool, getTenantId, protectedHandler } from '../context'
 import { eventLogger, sandboxState } from '../state'
 
 export const registerTenantRoutes = (app: FastifyInstance): void => {
@@ -29,7 +29,7 @@ export const registerTenantRoutes = (app: FastifyInstance): void => {
 
   app.patch('/tenants/settings', { preHandler: [protectedHandler] }, async request => {
     const body = request.body as { useWhatsappApi?: boolean }
-    
+
     if (body.useWhatsappApi !== undefined) {
       sandboxState.useWhatsappApi = body.useWhatsappApi
     }

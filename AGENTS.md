@@ -7,19 +7,13 @@ This repository is the monorepo root for the NudgeFlow loan-reactivation MVP.
 ```
 tenants/                       ← One folder per company deployment
   <tenant-id>/
-    PROFILE.md                 ← [DEEP-GENERALIZATION] Brand metadata (name, emoji, partner)
-    CHANNEL.md                 ← [DEEP-GENERALIZATION] WhatsApp templates & deep link formula
+    AGENT.md                   ← [DEEP-GENERALIZATION] All-in-one agent prompt
     KNOWLEDGE.md               ← [DEEP-GENERALIZATION] Tenant-specific product facts
-    WORKFLOWS.md               ← [DEEP-GENERALIZATION] Tenant-specific rescue scenarios (e.g. Bill Mismatch)
     data/
       dropoffs.csv             ← User drop-off CSV for ingestion
 
-prompts/                       ← [NEW] Centralized Global Multi-Tenant Instructions (Pure)
-  IDENTITY.md                  ← Global persona, tone, and Hinglish-first rules
-  WORKFLOWS.md                 ← Global nudge strategy and support reasoning
-  CONSTRAINTS.md               ← Messaging limits, character caps, and single CTA rules
-  SYSTEM.md                    ← Safety, governance, and escalation protocols
-  KNOWLEDGE.md                 ← Universal business knowledge (MSME basics)
+prompts/                       ← [DEPRECATED] No longer used by runtime
+```
 
 tests/sandbox/
   tenants/

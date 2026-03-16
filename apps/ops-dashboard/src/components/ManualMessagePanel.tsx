@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
-import { LayoutPanelTop, MessageCircle, Smartphone, Clock } from 'lucide-react'
-import { MessageInput } from './MessageInput'
+import { Clock, LayoutPanelTop, MessageCircle, Smartphone } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { MessageInput } from './MessageInput'
 
 export type ManualMessagePanelProps = {
   isSandbox: boolean
@@ -64,16 +64,20 @@ export const ManualMessagePanel = ({
             <h3 className="text-sm font-semibold tracking-tight">Chat as Neha (Agent)</h3>
           </div>
           {timeLeft && timeLeft !== 'No Session' && (
-            <div className={cn(
-              "flex items-center gap-1.5 text-[10px] font-medium px-2 py-0.5 rounded-full w-fit border",
-              timeLeft === 'Expired' ? "bg-red-50 text-red-600 border-red-100" : "bg-blue-50 text-blue-600 border-blue-100"
-            )}>
+            <div
+              className={cn(
+                'flex items-center gap-1.5 text-[10px] font-medium px-2 py-0.5 rounded-full w-fit border',
+                timeLeft === 'Expired'
+                  ? 'bg-red-50 text-red-600 border-red-100'
+                  : 'bg-blue-50 text-blue-600 border-blue-100'
+              )}
+            >
               <Clock className="h-3 w-3" />
               <span>Session Window: {timeLeft}</span>
             </div>
           )}
         </div>
-        
+
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -87,7 +91,9 @@ export const ManualMessagePanel = ({
 
           {isSandbox && (
             <div className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
-              <Smartphone className={cn("h-3 w-3", useWhatsapp ? "text-green-600" : "text-muted-foreground")} />
+              <Smartphone
+                className={cn('h-3 w-3', useWhatsapp ? 'text-green-600' : 'text-muted-foreground')}
+              />
               {useWhatsapp ? 'Global WhatsApp API' : 'Simulator Mode'}
             </div>
           )}
@@ -95,9 +101,11 @@ export const ManualMessagePanel = ({
       </div>
 
       {status && (
-        <div className={`text-[11px] font-medium px-2 py-1 rounded ${
-          status.includes('❌') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
-        }`}>
+        <div
+          className={`text-[11px] font-medium px-2 py-1 rounded ${
+            status.includes('❌') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
+          }`}
+        >
           {status}
         </div>
       )}
@@ -113,7 +121,7 @@ export const ManualMessagePanel = ({
         onChange={onChange}
         onSend={onSend}
         disabled={isSending || sessionDisabled}
-        placeholder={sessionDisabled ? "Window closed. Use Template button." : "Type message as Neha..."}
+        placeholder={sessionDisabled ? 'Window closed. Use Template button.' : 'Type message as Neha...'}
       />
     </div>
   )

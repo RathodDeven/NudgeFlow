@@ -1,5 +1,5 @@
-import type { CsvUser } from '../types'
 import { BrainCircuit, Info, ListTree, MessageSquareText } from 'lucide-react'
+import type { CsvUser } from '../types'
 
 const toDisplay = (value: unknown): string => {
   if (value === null || value === undefined || value === '') return '-'
@@ -19,8 +19,8 @@ export const InferencePanel = ({ user }: { user: CsvUser }) => {
           { label: 'Intent Class', value: user.inferredIntent, icon: BrainCircuit },
           { label: 'High Intent', value: user.highIntentFlag, icon: Info },
           { label: 'Disposition', value: user.lastCallDisposition, icon: ListTree },
-          { label: 'Follow-up', value: user.followUpAt, icon: MessageSquareText },
-        ].map((item) => (
+          { label: 'Follow-up', value: user.followUpAt, icon: MessageSquareText }
+        ].map(item => (
           <div key={item.label} className="rounded-xl border bg-card p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-1">
               <item.icon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -28,16 +28,16 @@ export const InferencePanel = ({ user }: { user: CsvUser }) => {
                 {item.label}
               </span>
             </div>
-            <p className="text-sm font-bold break-words">
-              {toDisplay(item.value)}
-            </p>
+            <p className="text-sm font-bold break-words">{toDisplay(item.value)}</p>
           </div>
         ))}
       </div>
 
       {/* Extracted Analytics */}
       <div className="rounded-xl border bg-card p-4 shadow-sm space-y-4">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Extracted Analytics</h4>
+        <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          Extracted Analytics
+        </h4>
         {entries.length === 0 ? (
           <p className="text-xs text-muted-foreground italic">No extracted analytics captured yet.</p>
         ) : (
@@ -47,9 +47,7 @@ export const InferencePanel = ({ user }: { user: CsvUser }) => {
                 <span className="block text-[10px] font-semibold text-muted-foreground mb-1 break-words">
                   {key.replace(/_/g, ' ')}
                 </span>
-                <span className="block text-xs font-medium break-words">
-                  {toDisplay(value)}
-                </span>
+                <span className="block text-xs font-medium break-words">{toDisplay(value)}</span>
               </div>
             ))}
           </div>

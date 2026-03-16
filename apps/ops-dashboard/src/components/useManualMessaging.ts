@@ -28,7 +28,7 @@ export const useManualMessaging = ({
   const handleSendManualMessage = async (textOverride?: string, templateName?: string) => {
     const text = textOverride ?? agentInputMessage
     if (!text.trim() && !templateName) return
-    
+
     if (!textOverride) setAgentInputMessage('')
     setIsManualSending(true)
     setManualStatus('')
@@ -37,7 +37,7 @@ export const useManualMessaging = ({
       if (!isSandbox || useWhatsapp) {
         await authFetch(`/users/${user.id}/send-whatsapp`, token, {
           method: 'POST',
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             message: text.trim() || undefined,
             templateName
           })

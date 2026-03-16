@@ -5,10 +5,10 @@ import {
   type BolnaScheduleBatchResponse,
   bolnaAgentVariables,
   createBolnaBatch,
-  scheduleBolnaBatch,
+  deleteBolnaBatch,
   listBolnaBatches,
-  stopBolnaBatch,
-  deleteBolnaBatch
+  scheduleBolnaBatch,
+  stopBolnaBatch
 } from '@nudges/provider-bolna'
 import { formatVoiceLoanAmount, formatVoiceLoanStage, resolveVoicePendingStep } from './voice-context'
 

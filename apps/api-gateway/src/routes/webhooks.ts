@@ -1,4 +1,9 @@
-import { type InboundWebhook, markMessageAsRead, parseInboundWebhook, sendTypingIndicator } from '@nudges/channel-gupshup'
+import {
+  type InboundWebhook,
+  markMessageAsRead,
+  parseInboundWebhook,
+  sendTypingIndicator
+} from '@nudges/channel-gupshup'
 import {
   createScheduledAction,
   ensureSession,
@@ -12,9 +17,9 @@ import {
 import { MEMORY_WINDOW_MESSAGES } from '@nudges/domain'
 import type { FastifyInstance } from 'fastify'
 import { dbPool, getTenantId } from '../context'
+import { env } from '../context'
 import { recordMessageInteraction } from '../services/interactions'
 import { applyAgentMemoryDelta, applyMessageMemoryUpdate } from '../services/memory'
-import { env } from '../context'
 import { buildFallbackSummaryState, hasRequiredSummaryKeys } from '../services/summary'
 import { loadTenantTemplateConfig } from '../services/tenant-channel'
 import { eventLogger, sandboxState } from '../state'
@@ -29,7 +34,7 @@ export const registerWebhookRoutes = (app: FastifyInstance): void => {
     }
 
     const parsed = parseInboundWebhook(payload)
-    
+
     // Normalize phone for DB lookup (user stores raw 10 digits without prefixes)
     const normalizedPhone = parsed.phone.replace(/[^\d]/g, '').slice(-10)
 
@@ -59,7 +64,10 @@ export const registerWebhookRoutes = (app: FastifyInstance): void => {
         void markMessageAsRead(gConfig, parsed.providerMessageId)
         void sendTypingIndicator(gConfig, parsed.providerMessageId)
       } else {
-        app.log.warn({ msg: 'Gupshup appName not configured for tenant, skipping presence updates', phone: parsed.phone })
+        app.log.warn({
+          msg: 'Gupshup appName not configured for tenant, skipping presence updates',
+          phone: parsed.phone
+        })
       }
     }
 
@@ -218,7 +226,6 @@ export const registerWebhookRoutes = (app: FastifyInstance): void => {
             source: tConfig?.source
           })
         })
-
       } catch (err) {
         app.log.error({ msg: 'Agent routing failed', error: err })
       }

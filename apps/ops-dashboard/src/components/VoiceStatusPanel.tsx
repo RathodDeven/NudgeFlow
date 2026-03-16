@@ -1,5 +1,5 @@
+import { AlertCircle, CheckCircle2, Circle, Clock, PhoneIncoming, PhoneOutgoing } from 'lucide-react'
 import type { CallAttempt, ScheduledAction } from '../types'
-import { CheckCircle2, Circle, Clock, PhoneIncoming, PhoneOutgoing, AlertCircle } from 'lucide-react'
 
 const formatTime = (iso: string) => {
   try {
@@ -18,12 +18,12 @@ type VoiceStatusPanelProps = {
 }
 
 export const VoiceStatusPanel = ({ scheduledActions, callAttempts }: VoiceStatusPanelProps) => {
-  const sortedScheduled = [...scheduledActions].sort((a, b) => 
-    new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime()
+  const sortedScheduled = [...scheduledActions].sort(
+    (a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime()
   )
 
-  const sortedAttempts = [...callAttempts].sort((a, b) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  const sortedAttempts = [...callAttempts].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   )
 
   return (
@@ -43,7 +43,7 @@ export const VoiceStatusPanel = ({ scheduledActions, callAttempts }: VoiceStatus
             </div>
           )}
 
-          {sortedScheduled.map((action) => (
+          {sortedScheduled.map(action => (
             <div key={action.id} className="relative flex items-center gap-6 group">
               <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-50 border-4 border-white shadow-sm shrink-0 z-10 transition-transform group-hover:scale-110">
                 <Clock className="h-4 w-4 text-blue-600" />
@@ -75,11 +75,13 @@ export const VoiceStatusPanel = ({ scheduledActions, callAttempts }: VoiceStatus
           ))}
 
           {/* Past Attempts */}
-          {sortedAttempts.map((attempt) => (
+          {sortedAttempts.map(attempt => (
             <div key={attempt.id} className="relative flex items-center gap-6 group">
-              <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-white shadow-sm shrink-0 z-10 transition-transform group-hover:scale-110 ${
-                attempt.disposition === 'answered' ? 'bg-green-50' : 'bg-gray-50'
-              }`}>
+              <div
+                className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-white shadow-sm shrink-0 z-10 transition-transform group-hover:scale-110 ${
+                  attempt.disposition === 'answered' ? 'bg-green-50' : 'bg-gray-50'
+                }`}
+              >
                 {attempt.disposition === 'answered' ? (
                   <CheckCircle2 className="h-4 w-4 text-green-600" />
                 ) : (
@@ -88,9 +90,11 @@ export const VoiceStatusPanel = ({ scheduledActions, callAttempts }: VoiceStatus
               </div>
               <div className="flex-1 bg-white/60 p-3 rounded-xl border border-dashed shadow-sm transition-all group-hover:shadow-md backdrop-blur-sm">
                 <div className="flex items-center justify-between mb-1">
-                  <span className={`text-xs font-bold uppercase ${
-                    attempt.disposition === 'answered' ? 'text-green-700' : 'text-muted-foreground'
-                  }`}>
+                  <span
+                    className={`text-xs font-bold uppercase ${
+                      attempt.disposition === 'answered' ? 'text-green-700' : 'text-muted-foreground'
+                    }`}
+                  >
                     Call {attempt.disposition || 'Attempt'}
                   </span>
                   {attempt.durationSeconds && (
@@ -99,9 +103,7 @@ export const VoiceStatusPanel = ({ scheduledActions, callAttempts }: VoiceStatus
                     </span>
                   )}
                 </div>
-                <div className="text-xs text-muted-foreground italic">
-                  {formatTime(attempt.createdAt)}
-                </div>
+                <div className="text-xs text-muted-foreground italic">{formatTime(attempt.createdAt)}</div>
               </div>
             </div>
           ))}

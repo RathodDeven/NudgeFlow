@@ -46,8 +46,12 @@ export const registerUserMessageRoutes = (app: FastifyInstance): void => {
 
   app.post('/users/:id/send-whatsapp', { preHandler: protectedHandler }, async (request, reply) => {
     const userId = (request.params as { id: string }).id
-    const body = request.body as { message?: string; templateName?: string; variables?: Record<string, unknown> }
-    
+    const body = request.body as {
+      message?: string
+      templateName?: string
+      variables?: Record<string, unknown>
+    }
+
     if (!body?.message && !body?.templateName) {
       return reply.status(400).send({ error: 'message or templateName is required' })
     }
@@ -89,7 +93,7 @@ export const registerUserMessageRoutes = (app: FastifyInstance): void => {
         pending_document: (body.variables?.pending_document as string) || 'required documents',
         disbursement_amount: user.loanAmount?.toLocaleString('en-IN') || '0',
         mob_num: raw10,
-        ...(body.variables as Record<string, string> || {})
+        ...((body.variables as Record<string, string>) || {})
       }
       resolvedParams = tConfig.template.variableOrder.map(key => varMap[key] || '')
     }

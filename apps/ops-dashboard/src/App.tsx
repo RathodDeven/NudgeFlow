@@ -11,10 +11,10 @@ import { CsvUpload } from './components/CsvUpload'
 import { DashboardTab } from './components/DashboardTab'
 import { Login } from './components/Login'
 import { MainLayout } from './layouts/MainLayout'
+import { BatchesPage } from './pages/BatchesPage'
 import { OverviewPage } from './pages/OverviewPage'
 import { UserDetailPage } from './pages/UserDetailPage'
 import { UsersPage } from './pages/UsersPage'
-import { BatchesPage } from './pages/BatchesPage'
 import type { CsvUser, EventItem, FunnelMetrics, PendingHITLTask, SessionItem } from './types'
 
 const toDisplayMobile = (phoneE164: string): string => {
@@ -56,19 +56,15 @@ export function App() {
       authFetch<{ events: EventItem[] }>('/dashboard/events', authToken).catch(() => ({ events: [] })),
       getUntouchedCount(authToken).catch(() => ({ count: 0 })),
       // Sync local preference to backend on load
-      authFetch<{ ok: boolean; settings: { useWhatsappApi: boolean } }>(
-        '/tenants/settings',
-        authToken,
-        {
-          method: 'PATCH',
-          body: JSON.stringify({
-            useWhatsappApi:
-              import.meta.env.VITE_ENABLE_SANDBOX !== 'true'
-                ? true
-                : window.localStorage.getItem('nudgeflow_use_whatsapp') === 'true'
-          })
-        }
-      ).catch(() => ({ ok: false, settings: null }))
+      authFetch<{ ok: boolean; settings: { useWhatsappApi: boolean } }>('/tenants/settings', authToken, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          useWhatsappApi:
+            import.meta.env.VITE_ENABLE_SANDBOX !== 'true'
+              ? true
+              : window.localStorage.getItem('nudgeflow_use_whatsapp') === 'true'
+        })
+      }).catch(() => ({ ok: false, settings: null }))
     ])
 
     setMetrics(funnel)

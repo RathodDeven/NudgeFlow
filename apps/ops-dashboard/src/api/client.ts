@@ -1,5 +1,5 @@
 import type { FunnelMetrics } from '../types'
-import type { BatchStartUntouchedResponse, UntouchedCountResponse, BolnaBatchItem } from '../types'
+import type { BatchStartUntouchedResponse, BolnaBatchItem, UntouchedCountResponse } from '../types'
 
 export const initialMetrics: FunnelMetrics = {
   reached: 0,
@@ -14,7 +14,7 @@ export const tokenKey = 'nudgeflow_admin_token'
 export const authFetch = async <T>(path: string, token: string, init?: RequestInit): Promise<T> => {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
-    ...(init?.headers as Record<string, string> ?? {})
+    ...((init?.headers as Record<string, string>) ?? {})
   }
 
   if (init?.body) {

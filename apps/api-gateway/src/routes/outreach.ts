@@ -11,7 +11,7 @@ import {
 } from '@nudges/db'
 import type { FastifyInstance } from 'fastify'
 import { dbPool, env, getTenantId, protectedHandler } from '../context'
-import { createAndScheduleBolnaBatch, listBatches, stopBatch, deleteBatch } from '../services/bolna-batch'
+import { createAndScheduleBolnaBatch, deleteBatch, listBatches, stopBatch } from '../services/bolna-batch'
 import { recordMessageInteraction } from '../services/interactions'
 import { applyMessageMemoryUpdate } from '../services/memory'
 import { loadTenantTemplateConfig } from '../services/tenant-channel'

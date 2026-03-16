@@ -1,10 +1,4 @@
-import { detectLanguage } from '@nudges/provider-sarvam'
-
-export const detectInboundLanguage = async (
-  inboundText: string,
-  apiKey?: string,
-  baseUrl?: string
-): Promise<string> => {
+export const detectInboundLanguage = async (inboundText: string): Promise<string> => {
   const isStrictEnglish =
     /^[a-zA-Z0-9\s.,!?'"()-]+$/.test(inboundText) &&
     !/(kya|loan|bhai|karna|hai|hum|aap|tame|kon|chho|naamu|hu|kem|nathi)/i.test(inboundText)
@@ -18,7 +12,8 @@ export const detectInboundLanguage = async (
     return 'en-IN'
   }
 
-  return detectLanguage(inboundText, apiKey, baseUrl)
+  // Fallback to en-IN (Hinglish/English hybrid) as OpenAI handles switching natively
+  return 'en-IN'
 }
 
 export const normalizePreferredLanguage = (inboundLanguage: string): 'english' | 'hindi' | 'hinglish' => {

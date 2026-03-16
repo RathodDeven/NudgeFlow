@@ -24,16 +24,19 @@ export const SandboxPanel = ({
         <FlaskConical className="h-4 w-4 text-purple-500" />
         <h3 className="text-sm font-semibold tracking-tight">Simulator (Control Console)</h3>
       </div>
-      
+
       <p className="text-[11px] text-muted-foreground leading-tight">
-        Interact as the <strong className="text-foreground font-bold">USER ({userName})</strong> to test agent behavior.
+        Interact as the <strong className="text-foreground font-bold">USER ({userName})</strong> to test agent
+        behavior.
       </p>
 
       <div className="mt-auto space-y-3">
         {status && (
-          <div className={`text-[11px] font-medium px-2 py-1.5 rounded ${
-            status.startsWith('✅') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-          }`}>
+          <div
+            className={`text-[11px] font-medium px-2 py-1.5 rounded ${
+              status.startsWith('✅') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+            }`}
+          >
             {status}
           </div>
         )}

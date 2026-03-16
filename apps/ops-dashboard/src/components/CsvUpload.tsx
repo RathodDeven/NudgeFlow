@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react'
-import { FileUp, FileText, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { AlertCircle, CheckCircle2, FileText, FileUp, Loader2, X } from 'lucide-react'
+import { useRef, useState } from 'react'
 
 interface CsvUploadProps {
   apiBase: string
@@ -120,9 +120,9 @@ export function CsvUpload({ apiBase, token, onUploadComplete }: CsvUploadProps) 
       }
 
       const data = await response.json()
-      setResult({ 
-        type: 'success', 
-        message: `Successfully uploaded ${data.inserted} users (${data.skipped} existing skipped).` 
+      setResult({
+        type: 'success',
+        message: `Successfully uploaded ${data.inserted} users (${data.skipped} existing skipped).`
       })
       setParsedRows([])
       setFileName('')
@@ -137,23 +137,23 @@ export function CsvUpload({ apiBase, token, onUploadComplete }: CsvUploadProps) 
   return (
     <div className="space-y-4">
       {!fileName ? (
-        <div 
+        <div
           role="button"
           tabIndex={0}
           onClick={() => fileInputRef.current?.click()}
-          onKeyDown={(e) => {
+          onKeyDown={e => {
             if (e.key === 'Enter' || e.key === ' ') {
               fileInputRef.current?.click()
             }
           }}
           className="border-2 border-dashed border-muted-foreground/25 rounded-xl p-8 transition-all hover:bg-muted/50 hover:border-primary/50 cursor-pointer text-center group"
         >
-          <input 
-            type="file" 
+          <input
+            type="file"
             ref={fileInputRef}
-            accept=".csv" 
-            onChange={handleFileChange} 
-            className="hidden" 
+            accept=".csv"
+            onChange={handleFileChange}
+            className="hidden"
           />
           <div className="flex flex-col items-center gap-2">
             <div className="p-3 rounded-full bg-primary/10 text-primary group-hover:scale-110 transition-transform">
@@ -174,12 +174,10 @@ export function CsvUpload({ apiBase, token, onUploadComplete }: CsvUploadProps) 
               </div>
               <div className="space-y-0.5">
                 <h4 className="font-semibold text-foreground leading-none">{fileName}</h4>
-                <p className="text-xs text-muted-foreground">
-                  {parsedRows.length} rows parsed successfully
-                </p>
+                <p className="text-xs text-muted-foreground">{parsedRows.length} rows parsed successfully</p>
               </div>
             </div>
-            <button 
+            <button
               type="button"
               onClick={handleReset}
               className="p-1.5 rounded-full hover:bg-background text-muted-foreground transition-colors"
@@ -190,10 +188,15 @@ export function CsvUpload({ apiBase, token, onUploadComplete }: CsvUploadProps) 
 
           {parsedRows.length > 0 && (
             <div className="mb-6 space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Data Preview</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">
+                Data Preview
+              </p>
               <div className="p-3 rounded-lg bg-background/50 border border-border flex flex-wrap gap-2 text-xs">
                 {parsedRows.slice(0, 5).map((row, i) => (
-                  <span key={`${row.name || row.customer_name || 'row'}-${i}`} className="px-2 py-1 rounded bg-muted text-muted-foreground">
+                  <span
+                    key={`${row.name || row.customer_name || 'row'}-${i}`}
+                    className="px-2 py-1 rounded bg-muted text-muted-foreground"
+                  >
                     {row.name || row.customer_name || 'User'}
                   </span>
                 ))}
@@ -202,8 +205,8 @@ export function CsvUpload({ apiBase, token, onUploadComplete }: CsvUploadProps) 
                     + {parsedRows.length - 5} more
                   </span>
                 )}
+              </div>
             </div>
-          </div>
           )}
 
           <div className="flex items-center gap-3">
@@ -235,11 +238,19 @@ export function CsvUpload({ apiBase, token, onUploadComplete }: CsvUploadProps) 
       )}
 
       {result && (
-        <div className={cn(
-          "p-4 rounded-lg flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300",
-          result.type === 'success' ? "bg-green-50 text-green-700 border border-green-100" : "bg-red-50 text-red-700 border border-red-100"
-        )}>
-          {result.type === 'success' ? <CheckCircle2 className="h-5 w-5 mt-0.5 shrink-0" /> : <AlertCircle className="h-5 w-5 mt-0.5 shrink-0" />}
+        <div
+          className={cn(
+            'p-4 rounded-lg flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300',
+            result.type === 'success'
+              ? 'bg-green-50 text-green-700 border border-green-100'
+              : 'bg-red-50 text-red-700 border border-red-100'
+          )}
+        >
+          {result.type === 'success' ? (
+            <CheckCircle2 className="h-5 w-5 mt-0.5 shrink-0" />
+          ) : (
+            <AlertCircle className="h-5 w-5 mt-0.5 shrink-0" />
+          )}
           <p className="text-sm font-medium">{result.message}</p>
         </div>
       )}

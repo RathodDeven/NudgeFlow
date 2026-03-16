@@ -1,7 +1,7 @@
 import { access } from 'node:fs/promises'
 import path from 'node:path'
-import { pathToFileURL, fileURLToPath } from 'node:url'
-import { env, TENANT_KEY } from '../context'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { TENANT_KEY, env } from '../context'
 
 export type TenantTemplateConfig = {
   templateId: string
@@ -70,8 +70,13 @@ const getConfigFilePath = async (): Promise<string | null> => {
 
 export const loadTenantTemplateConfig = async (
   templateKey?: string
-): Promise<{ appName: string; source: string; ctaBaseUrl?: string; template: TenantTemplateConfig } | null> => {
-    try {
+): Promise<{
+  appName: string
+  source: string
+  ctaBaseUrl?: string
+  template: TenantTemplateConfig
+} | null> => {
+  try {
     const filePath = await getConfigFilePath()
     if (!filePath) {
       console.warn(`[tenant-channel] No config file found for tenant: ${TENANT_KEY}`)
@@ -82,7 +87,7 @@ export const loadTenantTemplateConfig = async (
     const fileUrl = `${pathToFileURL(filePath).href}?t=${Date.now()}`
     const loaded = await import(fileUrl)
     const configModule = loaded.default as unknown
-    
+
     if (!isTemplateModule(configModule)) {
       console.error(`[tenant-channel] Invalid config module structure for ${filePath}`, configModule)
       return null
@@ -95,11 +100,11 @@ export const loadTenantTemplateConfig = async (
       return null
     }
 
-    return { 
-      appName: configModule.appName, 
-      source: configModule.source, 
+    return {
+      appName: configModule.appName,
+      source: configModule.source,
       ctaBaseUrl: configModule.ctaBaseUrl,
-      template 
+      template
     }
   } catch (err) {
     console.error(`[tenant-channel] Failed to load config for ${TENANT_KEY}:`, err)

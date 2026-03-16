@@ -1,20 +1,20 @@
-import { useEffect, useState, useCallback } from 'react'
-import { listBatches, stopBatch, deleteBatch } from '../api/client'
-import type { BolnaBatchItem } from '../types'
 import { cn } from '@/lib/utils'
-import { 
-  Play, 
-  Square, 
-  Trash2, 
-  Calendar, 
-  CheckCircle2, 
-  Clock, 
+import {
   AlertCircle,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  FileText,
   Loader2,
+  Play,
   RefreshCw,
   Search,
-  FileText
+  Square,
+  Trash2
 } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { deleteBatch, listBatches, stopBatch } from '../api/client'
+import type { BolnaBatchItem } from '../types'
 
 interface BatchesPageProps {
   token: string
@@ -110,9 +110,10 @@ export function BatchesPage({ token }: BatchesPageProps) {
     }
   }
 
-  const filteredBatches = batches.filter(b => 
-    b.batch_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (b.file_name || '').toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredBatches = batches.filter(
+    b =>
+      b.batch_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (b.file_name || '').toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   return (
@@ -146,7 +147,7 @@ export function BatchesPage({ token }: BatchesPageProps) {
             type="text"
             placeholder="Search by ID or Filename..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={e => setSearchQuery(e.target.value)}
             className="flex h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
@@ -192,9 +193,13 @@ export function BatchesPage({ token }: BatchesPageProps) {
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-2">
                           <FileText className="h-4 w-4 text-primary" />
-                          <span className="font-medium text-foreground">{batch.file_name || 'Manual Batch'}</span>
+                          <span className="font-medium text-foreground">
+                            {batch.file_name || 'Manual Batch'}
+                          </span>
                         </div>
-                        <span className="text-[10px] font-mono text-muted-foreground uppercase">{batch.batch_id}</span>
+                        <span className="text-[10px] font-mono text-muted-foreground uppercase">
+                          {batch.batch_id}
+                        </span>
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
@@ -209,9 +214,7 @@ export function BatchesPage({ token }: BatchesPageProps) {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      {getStatusBadge(batch.status)}
-                    </td>
+                    <td className="px-6 py-4 text-center">{getStatusBadge(batch.status)}</td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex flex-col">
                         <span className="font-semibold text-foreground">{batch.valid_contacts}</span>
@@ -238,7 +241,9 @@ export function BatchesPage({ token }: BatchesPageProps) {
                               </span>
                             )}
                             {Object.values(batch.execution_status).reduce((a, b) => a + b, 0) === 0 && (
-                              <span className="text-xs text-muted-foreground italic">No current activity</span>
+                              <span className="text-xs text-muted-foreground italic">
+                                No current activity
+                              </span>
                             )}
                           </>
                         ) : (
@@ -248,7 +253,9 @@ export function BatchesPage({ token }: BatchesPageProps) {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {['scheduled', 'queued', 'ringing', 'in-progress'].includes(batch.status.toLowerCase()) && (
+                        {['scheduled', 'queued', 'ringing', 'in-progress'].includes(
+                          batch.status.toLowerCase()
+                        ) && (
                           <button
                             type="button"
                             onClick={() => handleStop(batch.batch_id)}
