@@ -43,10 +43,20 @@ export const callSummarySchema = z.object({
 
 export const whatsappPayloadSchema = z.object({
   body: z.string(),
-  type: z.literal('cta_url').optional(),
+  type: z.enum(['cta_url', 'quick_reply']).optional(),
   display_text: z.string().optional(),
   url: z.string().optional(),
-  footer: z.string().optional()
+  footer: z.string().optional(),
+  header: z.string().optional(),
+  quickReplies: z
+    .array(
+      z.object({
+        title: z.string(),
+        postbackText: z.string().optional()
+      })
+    )
+    .max(3)
+    .optional()
 })
 
 export const sendMessageRequestSchema = z.object({

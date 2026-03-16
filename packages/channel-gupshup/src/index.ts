@@ -7,8 +7,6 @@ export type GupshupClientConfig = {
   source?: string // Actual phone number
 }
 
-
-
 export const sendWhatsAppMessage = async (
   config: GupshupClientConfig,
   request: SendMessageRequest
@@ -17,9 +15,7 @@ export const sendWhatsAppMessage = async (
   const cleanDestination = request.toPhoneE164.replace(/^\+/, '')
 
   const isTemplate = !!request.templateName
-  const endpoint = isTemplate
-    ? `${config.baseUrl}/wa/api/v1/template/msg`
-    : `${config.baseUrl}/wa/api/v1/msg`
+  const endpoint = isTemplate ? `${config.baseUrl}/wa/api/v1/template/msg` : `${config.baseUrl}/wa/api/v1/msg`
 
   const bodyParams = new URLSearchParams({
     channel: 'whatsapp',
@@ -45,6 +41,23 @@ export const sendWhatsAppMessage = async (
         display_text: request.whatsappPayload.display_text,
         url: request.whatsappPayload.url,
         footer: request.whatsappPayload.footer
+      })
+    )
+  } else if (request.whatsappPayload?.type === 'quick_reply') {
+    bodyParams.append(
+      'message',
+      JSON.stringify({
+        type: 'quick_reply',
+        content: {
+          type: 'text',
+          text: request.whatsappPayload.body,
+          caption: request.whatsappPayload.footer,
+          header: request.whatsappPayload.header
+        },
+        options: (request.whatsappPayload.quickReplies ?? []).map(qr => ({
+          title: qr.title,
+          postbackText: qr.postbackText ?? qr.title
+        }))
       })
     )
   } else {
@@ -78,19 +91,13 @@ export const sendWhatsAppMessage = async (
   }
 }
 
-export const markMessageAsRead = async (
-  config: GupshupClientConfig,
-  messageId: string
-): Promise<boolean> => {
-  const response = await fetch(
-    `${config.baseUrl}/wa/api/v1/msg/${config.appName}/read/${messageId}`,
-    {
-      method: 'PUT',
-      headers: {
-        apikey: config.apiKey
-      }
+export const markMessageAsRead = async (config: GupshupClientConfig, messageId: string): Promise<boolean> => {
+  const response = await fetch(`${config.baseUrl}/wa/api/v1/msg/${config.appName}/read/${messageId}`, {
+    method: 'PUT',
+    headers: {
+      apikey: config.apiKey
     }
-  )
+  })
 
   return response.ok
 }
@@ -100,15 +107,12 @@ export const sendTypingIndicator = async (
   messageId: string
 ): Promise<boolean> => {
   // Gupshup allows sending typing indicator via a similar PUT endpoint
-  const response = await fetch(
-    `${config.baseUrl}/wa/api/v1/msg/${config.appName}/typing/${messageId}`,
-    {
-      method: 'PUT',
-      headers: {
-        apikey: config.apiKey
-      }
+  const response = await fetch(`${config.baseUrl}/wa/api/v1/msg/${config.appName}/typing/${messageId}`, {
+    method: 'PUT',
+    headers: {
+      apikey: config.apiKey
     }
-  )
+  })
 
   return response.ok
 }

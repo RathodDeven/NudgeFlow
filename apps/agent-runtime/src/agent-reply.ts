@@ -40,10 +40,12 @@ export type AgentReplyResult = {
   isRejected: boolean
   whatsappPayload?: {
     body: string
-    type?: 'cta_url'
+    type?: 'cta_url' | 'quick_reply'
     display_text?: string
     url?: string
     footer?: string
+    header?: string
+    quickReplies?: { title: string; postbackText?: string }[]
   }
 }
 
@@ -55,13 +57,16 @@ const responseSchema = z.object({
   regionalResponseStrategy: z.string().nullable(),
   whatsappPayload: z.object({
     body: z.string(),
+    footer: z.string().optional(),
+    header: z.string().optional(),
     button: z
       .object({
         buttonLabel: z.string(),
         url: z.string()
       })
       .nullable()
-      .optional()
+      .optional(),
+    quickReplies: z.array(z.string()).max(3).optional()
   })
 })
 
@@ -108,8 +113,8 @@ export const generateAgentReply = async (input: AgentReplyInput): Promise<AgentR
     `Persisted summary state: ${JSON.stringify(input.session.summaryState)}`,
     `Compact facts: ${JSON.stringify(input.session.compactFacts)}`,
     `Stage: ${input.session.summaryState.stageContext}`,
-    `Exact 10-digit mobile number: ${(input.session.compactFacts.mobile_number as string || '').slice(-10)}`,
-    'Task: 1. Review the "Chat History" and "Current Inbound message". 2. If the user is just greeting (e.g., "Hi", "Hello", "Hey"), respond with a VERY SHORT, friendly greeting (e.g., "Hi! How can I help you today?"). 3. CRITICAL: For a simple greeting, DO NOT mention loans, reserved amounts, or pending steps. 4. If they ask a specific support question, answer it concisely. 5. Only if they ask about their status or if the conversation has already moved past greetings, provide a nudge about their current stage. 6. Classify intent and decide if a CTA button is helpful now. NEVER include a CTA button for a simple greeting.'
+    `Exact 10-digit mobile number: ${((input.session.compactFacts.mobile_number as string) || '').slice(-10)}`,
+    'Task: 1. Review the "Chat History" and "Current Inbound message". 2. If the user is just greeting (e.g., "Hi", "Hello", "Hey"), respond with a VERY SHORT, friendly greeting (e.g., "Hi! How can I help you today?"). 3. CRITICAL: For a simple greeting, DO NOT mention loans, reserved amounts, or pending steps. 4. If they ask a specific support question, answer it concisely. 5. Only if they ask about their status or if the conversation has already moved past greetings, provide a nudge about their current stage. 6. Classify intent and decide if a CTA button or Quick Replies are helpful now. NEVER include a CTA button for a simple greeting. Prefer Quick Replies (max 3, usually 2) for common follow-up actions like "Check Status", "Talk to Human", "Loan details", etc.'
   ].join('\n')
 
   const utilitiesContext = buildUtilitiesContext(
@@ -130,7 +135,7 @@ export const generateAgentReply = async (input: AgentReplyInput): Promise<AgentR
     userPrompt: renderedUserPrompt
   })
 
-  console.log(`[agent-runtime] LLM Raw Response:`, JSON.stringify(response.data, null, 2))
+  console.log('[agent-runtime] LLM Raw Response:', JSON.stringify(response.data, null, 2))
 
   const {
     intent,
@@ -140,7 +145,6 @@ export const generateAgentReply = async (input: AgentReplyInput): Promise<AgentR
     regionalResponseStrategy,
     whatsappPayload
   } = response.data as z.infer<typeof responseSchema>
-
 
   llmText = whatsappPayload.body
   usedModel = response.model
@@ -170,6 +174,8 @@ Return ONLY the response text. Do not include any prefixes like "Assistant:" or 
 
   if (whatsappPayload.button) {
     payloadPlainText = `${llmText}\n\n🔗 ${whatsappPayload.button.buttonLabel}: ${whatsappPayload.button.url}`
+  } else if (whatsappPayload.quickReplies?.length) {
+    payloadPlainText = `${llmText}\n\n${whatsappPayload.quickReplies.map(qr => `[ ${qr} ]`).join(' ')}`
   } else {
     payloadPlainText = llmText
   }
@@ -184,6 +190,13 @@ Return ONLY the response text. Do not include any prefixes like "Assistant:" or 
     route = intent
   }
 
+  let finalType: 'cta_url' | 'quick_reply' | undefined = undefined
+  if (whatsappPayload.button) {
+    finalType = 'cta_url'
+  } else if (whatsappPayload.quickReplies?.length) {
+    finalType = 'quick_reply'
+  }
+
   return {
     payloadPlainText,
     llmText,
@@ -193,9 +206,12 @@ Return ONLY the response text. Do not include any prefixes like "Assistant:" or 
     isRejected,
     whatsappPayload: {
       body: llmText,
-      type: whatsappPayload.button ? 'cta_url' : undefined,
+      type: finalType,
       display_text: whatsappPayload.button?.buttonLabel,
       url: whatsappPayload.button?.url,
+      footer: whatsappPayload.footer,
+      header: whatsappPayload.header,
+      quickReplies: whatsappPayload.quickReplies?.map(title => ({ title }))
     }
   }
 }
