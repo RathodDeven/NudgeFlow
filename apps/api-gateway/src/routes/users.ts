@@ -82,6 +82,7 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
       const metadata: Record<string, unknown> = {
         tenure: r.tenure || undefined,
         annual_interest: r.annual_interest || undefined,
+        processing_fee: r.processing_fee || undefined,
         disbursal_amount: r.disbursal_amount || r.disbursement_amount || undefined,
         loan_type: r.loan_type || undefined,
         application_updated_date: r.application_updated_date || undefined,
@@ -101,6 +102,9 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
         createdAt: r.application_creation_date || r.user_creation_date || undefined,
         applicationCreatedAt: r.application_creation_date || undefined,
         applicationUpdatedAt: r.application_updated_date || undefined,
+        tenureMonths: r.tenure ? Number.parseInt(r.tenure) : undefined,
+        annualInterestRate: r.annual_interest ? Number.parseFloat(r.annual_interest) : undefined,
+        processingFee: r.processing_fee ? Number.parseFloat(r.processing_fee) : undefined,
         metadata
       }
     })
@@ -263,6 +267,9 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
         pending_step: resolveVoicePendingStep(row.currentStage),
         customer_name: getStringValue(row.fullName, 'Unknown'),
         firm_name: getStringValue(row.firmName, 'Unknown'),
+        tenure: String(row.tenureMonths ?? ''),
+        annual_interest: String(row.annualInterestRate ?? ''),
+        processing_fee: String(row.processingFee ?? ''),
         time: getStringValue(inferred.suggested_next_call_at ?? inferred.last_call_at, '')
       }
 

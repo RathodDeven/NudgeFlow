@@ -32,7 +32,7 @@ export const resolveVoicePendingStep = (stage: string | null): string => {
   }
 }
 
-const formatZonedTime = (iso: string, timeZone: string): string => {
+export const formatZonedTime = (iso: string, timeZone: string): string => {
   try {
     return new Intl.DateTimeFormat('en-IN', {
       timeZone,
@@ -73,12 +73,17 @@ export const buildVoiceUserData = async (
 
   const allUserData: Record<string, string> = {
     timezone: params.session.tenantTimezone,
-    application_created_at: params.session.applicationCreatedAt ?? 'Unknown',
+    application_created_at: params.session.applicationCreatedAt
+      ? formatZonedTime(params.session.applicationCreatedAt, params.session.tenantTimezone)
+      : 'Unknown',
     loan_amount: formatVoiceLoanAmount(params.session.loanAmount),
     loan_stage: formatVoiceLoanStage(params.session.currentStage),
     pending_step: resolveVoicePendingStep(params.session.currentStage),
     customer_name: params.session.fullName ?? 'Unknown',
     firm_name: firmName,
+    tenure: String(params.session.tenureMonths ?? ''),
+    annual_interest: String(params.session.annualInterestRate ?? ''),
+    processing_fee: String(params.session.processingFee ?? ''),
     time: currentTime
   }
 

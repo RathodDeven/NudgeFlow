@@ -17,6 +17,9 @@ export type DbUser = {
   partnerCaseId?: string
   loanCaseId?: string
   loanAmount?: number
+  tenureMonths?: number
+  annualInterestRate?: number
+  processingFee?: number
   firmName?: string
   isReactivated?: boolean
   metadata?: Record<string, unknown>
@@ -42,6 +45,9 @@ export type InsertUserRow = {
   currentStage: string
   partnerCaseId: string
   loanAmount?: number
+  tenureMonths?: number
+  annualInterestRate?: number
+  processingFee?: number
   firmName?: string
   city?: string
   state?: string

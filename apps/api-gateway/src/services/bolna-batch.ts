@@ -10,7 +10,12 @@ import {
   scheduleBolnaBatch,
   stopBolnaBatch
 } from '@nudges/provider-bolna'
-import { formatVoiceLoanAmount, formatVoiceLoanStage, resolveVoicePendingStep } from './voice-context'
+import {
+  formatVoiceLoanAmount,
+  formatVoiceLoanStage,
+  formatZonedTime,
+  resolveVoicePendingStep
+} from './voice-context'
 
 const bolnaBatchRetryConfig: Record<string, unknown> = {
   enabled: true,
@@ -124,12 +129,17 @@ export const createAndScheduleBolnaBatch = async (
 
     const variableValues: Record<string, string> = {
       timezone: getStringValue(session.tenantTimezone, 'Asia/Kolkata'),
-      application_created_at: getStringValue(session.applicationCreatedAt, 'Unknown'),
+      application_created_at: session.applicationCreatedAt
+        ? formatZonedTime(session.applicationCreatedAt, session.tenantTimezone)
+        : 'Unknown',
       loan_amount: formatVoiceLoanAmount(session.loanAmount),
       loan_stage: formatVoiceLoanStage(session.currentStage),
       pending_step: resolveVoicePendingStep(session.currentStage),
       customer_name: getStringValue(session.fullName, 'Unknown'),
       firm_name: getStringValue(session.firmName, 'Unknown'),
+      tenure: String(session.tenureMonths ?? ''),
+      annual_interest: String(session.annualInterestRate ?? ''),
+      processing_fee: String(session.processingFee ?? ''),
       time: getCurrentTimeInZone(session.tenantTimezone)
     }
 
