@@ -44,7 +44,7 @@ export const sendWhatsAppMessage = async (
         body: request.whatsappPayload.body,
         display_text: request.whatsappPayload.display_text,
         url: request.whatsappPayload.url,
-        footer: request.whatsappPayload.footer || 'Thank you'
+        footer: request.whatsappPayload.footer
       })
     )
   } else {
