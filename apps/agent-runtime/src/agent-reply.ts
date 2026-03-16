@@ -80,7 +80,8 @@ export const generateAgentReply = async (input: AgentReplyInput): Promise<AgentR
     `Detected language: ${input.inboundLanguage || 'en-IN'}`,
     `Session Context: ${JSON.stringify(input.session.summaryState)}`,
     `Customer Facts: ${JSON.stringify(input.session.compactFacts)}`,
-    `Mobile: ${((input.session.compactFacts.mobile_number as string) || '').slice(-10)}`
+    `Mobile: ${((input.session.compactFacts.mobile_number as string) || '').slice(-10)}`,
+    'Task Constraints: NEVER include raw URLs (http/https) in the message body. All links must be in the CTA button logic.'
   ].join('\n')
 
   const utilitiesContext = buildUtilitiesContext(
@@ -111,7 +112,8 @@ export const generateAgentReply = async (input: AgentReplyInput): Promise<AgentR
   usedModel = response.model
 
   if (whatsappPayload.button) {
-    payloadPlainText = `${llmText}\n\n🔗 ${whatsappPayload.button.buttonLabel}: ${whatsappPayload.button.url}`
+    // URL is sent in the CTA button, do NOT append it to the plain text body (per technical requirement)
+    payloadPlainText = llmText
   } else if (whatsappPayload.quickReplies?.length) {
     payloadPlainText = `${llmText}\n\n${whatsappPayload.quickReplies.map(qr => `[ ${qr} ]`).join(' ')}`
   } else {
