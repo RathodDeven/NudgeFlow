@@ -60,6 +60,7 @@ CREATE TABLE "loan_cases" (
 	"tenure_months" integer,
 	"annual_interest_rate" numeric(5, 2),
 	"processing_fee" numeric(12, 2),
+	"emi_amount" numeric(12, 2),
 	"firm_name" text,
 	"is_reactivated" boolean DEFAULT false NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,

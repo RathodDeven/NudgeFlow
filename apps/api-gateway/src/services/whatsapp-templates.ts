@@ -46,6 +46,9 @@ export const buildTemplateVariables = (user: DbUser, variableOrder: string[]): R
     application_id: user.partnerCaseId ?? user.externalUserId,
     pending_document: resolvePendingDocument(user),
     disbursement_amount: Number.isFinite(parsedAmount) ? parsedAmount.toLocaleString('en-IN') : '0',
+    tenure: String(user.tenureMonths ?? ''),
+    annual_interest: String(user.annualInterestRate ?? ''),
+    processing_fee: String(user.processingFee ?? ''),
     mob_num: user.phoneE164
   }
 

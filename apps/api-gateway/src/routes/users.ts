@@ -105,6 +105,7 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
         tenureMonths: r.tenure ? Number.parseInt(r.tenure) : undefined,
         annualInterestRate: r.annual_interest ? Number.parseFloat(r.annual_interest) : undefined,
         processingFee: r.processing_fee ? Number.parseFloat(r.processing_fee) : undefined,
+        emiAmount: r.emi_amount ? Number.parseFloat(r.emi_amount) : undefined,
         metadata
       }
     })
@@ -212,6 +213,10 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
           row.firmName,
           row.applicationCreatedAt,
           row.applicationUpdatedAt,
+          row.tenureMonths,
+          row.annualInterestRate,
+          row.processingFee,
+          row.emiAmount,
           row.tenantTimezone,
           inferred.inferred_intent,
           inferred.high_intent_flag,
@@ -270,6 +275,7 @@ export const registerUserRoutes = (app: FastifyInstance): void => {
         tenure: String(row.tenureMonths ?? ''),
         annual_interest: String(row.annualInterestRate ?? ''),
         processing_fee: String(row.processingFee ?? ''),
+        emi_amount: String(row.emiAmount ?? ''),
         time: getStringValue(inferred.suggested_next_call_at ?? inferred.last_call_at, '')
       }
 

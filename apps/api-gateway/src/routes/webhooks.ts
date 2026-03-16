@@ -113,6 +113,7 @@ export const registerWebhookRoutes = (app: FastifyInstance): void => {
           tenure_months: user.tenureMonths ?? 'Unknown',
           annual_interest_rate: user.annualInterestRate ?? 'Unknown',
           processing_fee: user.processingFee ?? 'Unknown',
+          emi_amount: user.emiAmount ?? 'Unknown',
           partner_case_id: user.partnerCaseId ?? 'Unknown',
           is_reactivated: user.isReactivated ?? false,
           inferred_intent: user.inferredIntent ?? null,

@@ -9,7 +9,8 @@ export const bolnaAgentVariables = [
   'time',
   'tenure',
   'annual_interest',
-  'processing_fee'
+  'processing_fee',
+  'emi_amount'
 ]
 
 export const bolnaAgentWelcomeMessage =
@@ -67,6 +68,9 @@ export const bolnaAgentPrompt = `# SECTION 1: Demeanour & Identity
 
 **FAQ (Processing Fees):**
 "Aapki processing fees {processing_fee} hai."
+
+**FAQ (EMI):**
+"Aapka mahine ka EMI {emi_amount} hoga."
 
 **Technical Issues:**
 "क्या लिंक खोलने में दिक्कत है या फाइल अपलोड करने में?"

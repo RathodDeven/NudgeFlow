@@ -15,7 +15,6 @@ export type AgentReplyInput = {
     compactFacts: Record<string, unknown>
   }
   inboundText: string
-  inboundLanguage: string
   boundedHistory: { direction: 'inbound' | 'outbound'; body: string }[]
   fallbackText: string
   promptContext: PromptContext
@@ -77,7 +76,6 @@ export const generateAgentReply = async (input: AgentReplyInput): Promise<AgentR
     buildHistoryBlock(input.boundedHistory),
     '---------------------------',
     `Current Inbound message: ${input.inboundText || '(none)'}`,
-    `Detected language: ${input.inboundLanguage || 'en-IN'}`,
     `Session Context: ${JSON.stringify(input.session.summaryState)}`,
     `Customer Facts: ${JSON.stringify(input.session.compactFacts)}`,
     `Mobile: ${((input.session.compactFacts.mobile_number as string) || '').slice(-10)}`,

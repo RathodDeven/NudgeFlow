@@ -14,6 +14,7 @@ export type SessionContext = {
   tenureMonths: number | null
   annualInterestRate: number | null
   processingFee: number | null
+  emiAmount: number | null
   firmName: string | null
   loanMetadata: Record<string, unknown> | null
   applicationCreatedAt: string | null
@@ -51,6 +52,7 @@ export const getSessionContext = async (pool: pg.Pool, sessionId: string): Promi
        lc.tenure_months AS "tenureMonths",
        lc.annual_interest_rate AS "annualInterestRate",
        lc.processing_fee AS "processingFee",
+       lc.emi_amount AS "emiAmount",
        lc.firm_name AS "firmName",
        lc.metadata AS "loanMetadata",
        lc.application_created_at AS "applicationCreatedAt",

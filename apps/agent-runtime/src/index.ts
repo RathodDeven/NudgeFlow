@@ -12,7 +12,6 @@ import { generateAgentReply } from './agent-reply'
 import { summarizeCall } from './call-summary'
 import { buildFallbackReply } from './fallback'
 import { capRecentHistory, estimateTokens } from './history'
-import { detectInboundLanguage, normalizePreferredLanguage } from './language'
 import { loadPromptContext } from './prompt-context'
 
 const env = loadEnv()
@@ -69,15 +68,11 @@ app.post('/agent/respond', async (request, reply) => {
   )
   const inboundText = lastInboundMessage?.body ?? ''
 
-  const inboundLanguage = await detectInboundLanguage(inboundText)
-  app.log.info({ msg: 'Language Detection completed', inboundLanguage })
-
   const replyResult = await generateAgentReply({
     tenantId: TENANT_ID,
     env,
     session,
     inboundText,
-    inboundLanguage,
     boundedHistory,
     fallbackText: buildFallbackReply('recovery', 'Please continue your application.'),
     promptContext
@@ -90,7 +85,7 @@ app.post('/agent/respond', async (request, reply) => {
     : replyResult.payloadPlainText
 
   const memoryDelta = {
-    summaryState: { ...session.summaryState, preferredLanguage: normalizePreferredLanguage(inboundLanguage) },
+    summaryState: session.summaryState,
     compactFactsDelta: {},
     tokenEstimate: estimateTokens(inboundText, payloadPlainText)
   }
@@ -98,7 +93,6 @@ app.post('/agent/respond', async (request, reply) => {
   if (replyResult.isEscalated) {
     return generateReplyOutputSchema.parse({
       body: 'I am connecting you to a human specialist for better assistance.',
-      language: inboundLanguage,
       confidence: 0.9,
       usedModel: replyResult.usedModel,
       route: 'handoff',
@@ -113,7 +107,6 @@ app.post('/agent/respond', async (request, reply) => {
 
   return generateReplyOutputSchema.parse({
     body: payloadPlainText,
-    language: inboundLanguage,
     confidence: 0.82,
     usedModel: replyResult.usedModel,
     route: guardrail.allowed && !replyResult.isRejected ? replyResult.route : 'reject',

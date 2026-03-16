@@ -20,6 +20,7 @@ export type DbUser = {
   tenureMonths?: number
   annualInterestRate?: number
   processingFee?: number
+  emiAmount?: number
   firmName?: string
   isReactivated?: boolean
   metadata?: Record<string, unknown>
@@ -48,6 +49,7 @@ export type InsertUserRow = {
   tenureMonths?: number
   annualInterestRate?: number
   processingFee?: number
+  emiAmount?: number
   firmName?: string
   city?: string
   state?: string

@@ -42,14 +42,15 @@ export const insertUsers = async (
       const actualUserId = userResult.rows[0]?.id as string
 
       await pool.query(
-        `INSERT INTO loan_cases (id, tenant_id, user_id, partner_case_id, current_stage, loan_amount, tenure_months, annual_interest_rate, processing_fee, firm_name, created_at, application_created_at, application_updated_at, metadata)
-         VALUES ($1, $2, $3, $4, $5, $6, $12, $13, $14, $7, $8, $10, $11, $9)
+        `INSERT INTO loan_cases (id, tenant_id, user_id, partner_case_id, current_stage, loan_amount, tenure_months, annual_interest_rate, processing_fee, emi_amount, firm_name, created_at, application_created_at, application_updated_at, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6, $12, $13, $14, $15, $7, $8, $10, $11, $9)
          ON CONFLICT (tenant_id, partner_case_id) DO UPDATE SET
            current_stage = $5,
            loan_amount = $6,
            tenure_months = $12,
            annual_interest_rate = $13,
            processing_fee = $14,
+           emi_amount = $15,
            firm_name = $7,
            created_at = COALESCE($8, loan_cases.created_at),
            application_created_at = COALESCE($10, loan_cases.application_created_at),
@@ -70,7 +71,8 @@ export const insertUsers = async (
           row.applicationUpdatedAt ?? null,
           row.tenureMonths ?? null,
           row.annualInterestRate ?? null,
-          row.processingFee ?? null
+          row.processingFee ?? null,
+          row.emiAmount ?? null
         ]
       )
 
@@ -94,7 +96,7 @@ export const listUsers = async (pool: pg.Pool, tenantId: string): Promise<DbUser
        lc.current_stage AS "currentStage", lc.partner_case_id AS "partnerCaseId",
        lc.id AS "loanCaseId", lc.loan_amount AS "loanAmount",
        lc.tenure_months AS "tenureMonths", lc.annual_interest_rate AS "annualInterestRate",
-       lc.processing_fee AS "processingFee",
+       lc.processing_fee AS "processingFee", lc.emi_amount AS "emiAmount",
        lc.firm_name AS "firmName",
        lc.is_reactivated AS "isReactivated",
       lc.inferred_intent AS "inferredIntent",
@@ -127,7 +129,7 @@ export const getUserById = async (pool: pg.Pool, userId: string): Promise<DbUser
        lc.current_stage AS "currentStage", lc.partner_case_id AS "partnerCaseId",
        lc.id AS "loanCaseId", lc.loan_amount AS "loanAmount",
        lc.tenure_months AS "tenureMonths", lc.annual_interest_rate AS "annualInterestRate",
-       lc.processing_fee AS "processingFee",
+       lc.processing_fee AS "processingFee", lc.emi_amount AS "emiAmount",
        lc.firm_name AS "firmName",
        lc.is_reactivated AS "isReactivated",
       lc.inferred_intent AS "inferredIntent",
@@ -163,7 +165,7 @@ export const getUserByPhoneE164 = async (
        lc.current_stage AS "currentStage", lc.partner_case_id AS "partnerCaseId",
        lc.id AS "loanCaseId", lc.loan_amount AS "loanAmount",
        lc.tenure_months AS "tenureMonths", lc.annual_interest_rate AS "annualInterestRate",
-       lc.processing_fee AS "processingFee",
+       lc.processing_fee AS "processingFee", lc.emi_amount AS "emiAmount",
        lc.firm_name AS "firmName",
        lc.is_reactivated AS "isReactivated",
       lc.inferred_intent AS "inferredIntent",
@@ -204,7 +206,7 @@ export const listUntouchedUsers = async (pool: pg.Pool, tenantId: string, limit 
        lc.current_stage AS "currentStage", lc.partner_case_id AS "partnerCaseId",
        lc.id AS "loanCaseId", lc.loan_amount AS "loanAmount",
        lc.tenure_months AS "tenureMonths", lc.annual_interest_rate AS "annualInterestRate",
-       lc.processing_fee AS "processingFee",
+       lc.processing_fee AS "processingFee", lc.emi_amount AS "emiAmount",
        lc.firm_name AS "firmName",
        lc.is_reactivated AS "isReactivated",
       lc.inferred_intent AS "inferredIntent",
@@ -367,6 +369,7 @@ export type InferredUserExportRow = {
   tenureMonths: number | null
   annualInterestRate: number | null
   processingFee: number | null
+  emiAmount: number | null
   tenantTimezone: string
   inferred: Record<string, unknown>
 }
@@ -409,6 +412,10 @@ export const listLatestInferredUsers = async (
        lc.firm_name AS "firmName",
        lc.application_created_at AS "applicationCreatedAt",
        lc.application_updated_at AS "applicationUpdatedAt",
+       lc.tenure_months AS "tenureMonths",
+       lc.annual_interest_rate AS "annualInterestRate",
+       lc.processing_fee AS "processingFee",
+       lc.emi_amount AS "emiAmount",
        t.timezone AS "tenantTimezone",
        (
          COALESCE(lc.metadata->'call_inference', '{}'::jsonb)

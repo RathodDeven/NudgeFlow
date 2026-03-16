@@ -75,20 +75,36 @@ const startConversationForUser = async (params: {
 const sendBatchTemplates = async (
   users: DbUser[]
 ): Promise<{ triggered: number; failed: number; errors: Array<{ userId: string; reason: string }> }> => {
+  const CONCURRENCY_LIMIT = 5
   let triggered = 0
   let failed = 0
   const errors: Array<{ userId: string; reason: string }> = []
 
-  for (const user of users) {
-    try {
-      await startConversationForUser({ userId: user.id, skipVoiceCall: true })
-      triggered += 1
-    } catch (error) {
-      failed += 1
-      errors.push({
-        userId: user.id,
-        reason: (error as Error).message
-      })
+  const chunks: DbUser[][] = []
+  for (let i = 0; i < users.length; i += CONCURRENCY_LIMIT) {
+    chunks.push(users.slice(i, i + CONCURRENCY_LIMIT))
+  }
+
+  for (const chunk of chunks) {
+    const results: Array<{ success: true } | { success: false; userId: string; reason: string }> =
+      await Promise.all(
+        chunk.map(async user => {
+          try {
+            await startConversationForUser({ userId: user.id, skipVoiceCall: true })
+            return { success: true }
+          } catch (error) {
+            return { success: false, userId: user.id, reason: (error as Error).message }
+          }
+        })
+      )
+
+    for (const res of results) {
+      if (res.success) {
+        triggered += 1
+      } else if (res.userId && res.reason) {
+        failed += 1
+        errors.push({ userId: res.userId, reason: res.reason })
+      }
     }
   }
 

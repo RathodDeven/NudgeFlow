@@ -11,6 +11,7 @@ export const loanCaseSchema = z.object({
   tenureMonths: z.number().int().optional().nullable(),
   annualInterestRate: z.number().optional().nullable(),
   processingFee: z.number().optional().nullable(),
+  emiAmount: z.number().optional().nullable(),
   isReactivated: z.boolean().default(false),
   deepLink: z.string().url().optional(),
   updatedAt: z.string().datetime()

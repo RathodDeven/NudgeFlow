@@ -84,6 +84,7 @@ export const buildVoiceUserData = async (
     tenure: String(params.session.tenureMonths ?? ''),
     annual_interest: String(params.session.annualInterestRate ?? ''),
     processing_fee: String(params.session.processingFee ?? ''),
+    emi_amount: String(params.session.emiAmount ?? ''),
     time: currentTime
   }
 

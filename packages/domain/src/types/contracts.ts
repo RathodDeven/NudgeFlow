@@ -89,7 +89,7 @@ export const memoryDeltaSchema = z.object({
 
 export const generateReplyOutputSchema = z.object({
   body: z.string(),
-  language: z.string(),
+  language: z.string().optional(),
   confidence: z.number().min(0).max(1),
   usedModel: z.string(),
   route: z.enum(['recovery', 'support', 'reject', 'handoff']),
