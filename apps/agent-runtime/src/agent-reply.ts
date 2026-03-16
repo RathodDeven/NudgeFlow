@@ -27,15 +27,15 @@ export type AgentReplyResult = {
   route: 'recovery' | 'support' | 'reject' | 'handoff'
   isEscalated: boolean
   isRejected: boolean
-  whatsappPayload?: {
+  whatsappPayload: {
     body: string
-    type?: 'cta_url' | 'quick_reply'
-    display_text?: string
-    url?: string
-    footer?: string
-    header?: string
-    quickReplies?: { title: string; postbackText?: string }[]
-  }
+    type: 'cta_url' | 'quick_reply' | null
+    display_text: string | null
+    url: string | null
+    footer: string | null
+    header: string | null
+    quickReplies: { title: string; postbackText: string | null }[] | null
+  } | null
 }
 
 const responseSchema = z.object({
@@ -44,16 +44,15 @@ const responseSchema = z.object({
   isOutOfScope: z.boolean(),
   whatsappPayload: z.object({
     body: z.string(),
-    footer: z.string().optional(),
-    header: z.string().optional(),
+    footer: z.string().nullable(),
+    header: z.string().nullable(),
     button: z
       .object({
         buttonLabel: z.string(),
         url: z.string()
       })
-      .nullable()
-      .optional(),
-    quickReplies: z.array(z.string()).max(3).optional()
+      .nullable(),
+    quickReplies: z.array(z.string()).max(3).nullable()
   })
 })
 
@@ -66,7 +65,15 @@ export const generateAgentReply = async (input: AgentReplyInput): Promise<AgentR
   let payloadPlainText = llmText
 
   if (!input.env.OPENAI_API_KEY) {
-    return { payloadPlainText, llmText, usedModel, route, isEscalated, isRejected }
+    return {
+      payloadPlainText,
+      llmText,
+      usedModel,
+      route,
+      isEscalated,
+      isRejected,
+      whatsappPayload: null
+    }
   }
 
   usedModel = input.env.OPENAI_MODEL_ROUTINE
@@ -144,12 +151,12 @@ export const generateAgentReply = async (input: AgentReplyInput): Promise<AgentR
     isRejected,
     whatsappPayload: {
       body: llmText,
-      type: finalType,
-      display_text: whatsappPayload.button?.buttonLabel,
-      url: whatsappPayload.button?.url,
-      footer: whatsappPayload.footer,
-      header: whatsappPayload.header,
-      quickReplies: whatsappPayload.quickReplies?.map(title => ({ title }))
+      type: finalType ?? null,
+      display_text: whatsappPayload.button?.buttonLabel ?? null,
+      url: whatsappPayload.button?.url ?? null,
+      footer: whatsappPayload.footer ?? null,
+      header: whatsappPayload.header ?? null,
+      quickReplies: whatsappPayload.quickReplies?.map(title => ({ title, postbackText: null })) ?? null
     }
   }
 }

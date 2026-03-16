@@ -93,11 +93,14 @@ app.post('/agent/respond', async (request, reply) => {
   if (replyResult.isEscalated) {
     return generateReplyOutputSchema.parse({
       body: 'I am connecting you to a human specialist for better assistance.',
+      language: null,
       confidence: 0.9,
       usedModel: replyResult.usedModel,
       route: 'handoff',
       guardrailNotes: ['risk_or_complexity_trigger_detected_by_llm'],
-      memoryDelta
+      suggestedNextFollowupAt: null,
+      memoryDelta,
+      whatsappPayload: null
     })
   }
 
@@ -107,12 +110,14 @@ app.post('/agent/respond', async (request, reply) => {
 
   return generateReplyOutputSchema.parse({
     body: payloadPlainText,
+    language: null,
     confidence: 0.82,
     usedModel: replyResult.usedModel,
     route: guardrail.allowed && !replyResult.isRejected ? replyResult.route : 'reject',
     guardrailNotes: guardrail.reasons,
+    suggestedNextFollowupAt: null,
     memoryDelta,
-    whatsappPayload: finalWhatsappPayload
+    whatsappPayload: finalWhatsappPayload ?? null
   })
 })
 

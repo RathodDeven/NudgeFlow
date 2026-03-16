@@ -38,9 +38,9 @@ export const sendWhatsAppMessage = async (
       JSON.stringify({
         type: 'cta_url',
         body: request.whatsappPayload.body,
-        display_text: request.whatsappPayload.display_text,
-        url: request.whatsappPayload.url,
-        footer: request.whatsappPayload.footer
+        display_text: request.whatsappPayload.display_text ?? undefined,
+        url: request.whatsappPayload.url ?? undefined,
+        footer: request.whatsappPayload.footer ?? undefined
       })
     )
   } else if (request.whatsappPayload?.type === 'quick_reply') {
@@ -51,8 +51,8 @@ export const sendWhatsAppMessage = async (
         content: {
           type: 'text',
           text: request.whatsappPayload.body,
-          caption: request.whatsappPayload.footer,
-          header: request.whatsappPayload.header
+          caption: request.whatsappPayload.footer ?? undefined,
+          header: request.whatsappPayload.header ?? undefined
         },
         options: (request.whatsappPayload.quickReplies ?? []).map(qr => ({
           title: qr.title.slice(0, 20),

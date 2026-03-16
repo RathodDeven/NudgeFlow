@@ -43,20 +43,20 @@ export const callSummarySchema = z.object({
 
 export const whatsappPayloadSchema = z.object({
   body: z.string(),
-  type: z.enum(['cta_url', 'quick_reply']).optional(),
-  display_text: z.string().optional(),
-  url: z.string().optional(),
-  footer: z.string().optional(),
-  header: z.string().optional(),
+  type: z.enum(['cta_url', 'quick_reply']).nullable(),
+  display_text: z.string().nullable(),
+  url: z.string().nullable(),
+  footer: z.string().nullable(),
+  header: z.string().nullable(),
   quickReplies: z
     .array(
       z.object({
         title: z.string(),
-        postbackText: z.string().optional()
+        postbackText: z.string().nullable()
       })
     )
     .max(3)
-    .optional()
+    .nullable()
 })
 
 export const sendMessageRequestSchema = z.object({
@@ -89,14 +89,14 @@ export const memoryDeltaSchema = z.object({
 
 export const generateReplyOutputSchema = z.object({
   body: z.string(),
-  language: z.string().optional(),
+  language: z.string().nullable(),
   confidence: z.number().min(0).max(1),
   usedModel: z.string(),
   route: z.enum(['recovery', 'support', 'reject', 'handoff']),
   guardrailNotes: z.array(z.string()).default([]),
-  suggestedNextFollowupAt: z.string().datetime().optional(),
+  suggestedNextFollowupAt: z.string().datetime().nullable(),
   memoryDelta: memoryDeltaSchema,
-  whatsappPayload: whatsappPayloadSchema.optional()
+  whatsappPayload: whatsappPayloadSchema.nullable()
 })
 
 export const summarizeCallInputSchema = z.object({
