@@ -8,7 +8,7 @@ import {
   saveMessage,
   updateSessionMemoryState
 } from '@nudges/db'
-import { MEMORY_WINDOW_MESSAGES } from '@nudges/domain'
+import { MEMORY_WINDOW_MESSAGES, normalizeWhatsAppPhone } from '@nudges/domain'
 import { dbPool, env } from './state'
 
 export const sendWhatsAppTemplate = async (sessionId: string): Promise<void> => {
@@ -122,7 +122,7 @@ export const sendWhatsAppFollowup = async (sessionId: string): Promise<void> => 
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       sessionId,
-      toPhoneE164: session.phoneE164,
+      toPhoneE164: normalizeWhatsAppPhone(session.phoneE164),
       body: agentData.body
     })
   })

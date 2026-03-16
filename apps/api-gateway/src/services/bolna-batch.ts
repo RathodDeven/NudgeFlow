@@ -140,6 +140,7 @@ export const createAndScheduleBolnaBatch = async (
       tenure: String(session.tenureMonths ?? ''),
       annual_interest: String(session.annualInterestRate ?? ''),
       processing_fee: String(session.processingFee ?? ''),
+      emi_amount: String(session.emiAmount ?? ''),
       time: getCurrentTimeInZone(session.tenantTimezone)
     }
 

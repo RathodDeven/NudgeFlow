@@ -1,4 +1,5 @@
 import type { DbUser } from '@nudges/db'
+import { normalizeWhatsAppPhone } from '@nudges/domain'
 
 const resolvePendingStep = (stage?: string): string => {
   switch ((stage ?? '').toLowerCase()) {
@@ -73,7 +74,7 @@ export const sendTenantWhatsAppTemplate = async (params: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       sessionId: params.sessionId,
-      toPhoneE164: params.toPhoneE164,
+      toPhoneE164: normalizeWhatsAppPhone(params.toPhoneE164),
       body: '',
       templateName: params.templateConfig.templateId,
       variables,

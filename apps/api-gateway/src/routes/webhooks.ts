@@ -14,7 +14,7 @@ import {
   insertAgentDecision,
   listRecentCallSummaries
 } from '@nudges/db'
-import { MEMORY_WINDOW_MESSAGES } from '@nudges/domain'
+import { MEMORY_WINDOW_MESSAGES, normalizeWhatsAppPhone } from '@nudges/domain'
 import type { FastifyInstance } from 'fastify'
 import { dbPool, getTenantId } from '../context'
 import { env } from '../context'
@@ -223,7 +223,7 @@ export const registerWebhookRoutes = (app: FastifyInstance): void => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             sessionId,
-            toPhoneE164: toPhone,
+            toPhoneE164: normalizeWhatsAppPhone(toPhone),
             body: agentData.body,
             whatsappPayload: finalWhatsappPayload,
             appName: tConfig?.appName,

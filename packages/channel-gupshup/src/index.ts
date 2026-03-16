@@ -55,7 +55,7 @@ export const sendWhatsAppMessage = async (
           header: request.whatsappPayload.header
         },
         options: (request.whatsappPayload.quickReplies ?? []).map(qr => ({
-          title: qr.title,
+          title: qr.title.slice(0, 20),
           postbackText: qr.postbackText ?? qr.title
         }))
       })
