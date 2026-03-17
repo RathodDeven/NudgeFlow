@@ -25,11 +25,9 @@ export const useManualMessaging = ({
   const [isManualSending, setIsManualSending] = useState(false)
   const [manualStatus, setManualStatus] = useState('')
 
-  const handleSendManualMessage = async (textOverride?: string) => {
+  const handleSendManualMessage = async (textOverride?: string, forceTemplate?: boolean) => {
     const text = textOverride ?? agentInputMessage
-    // If text is empty and no template is explicitly provided (which we removed), 
-    // the backend will now default to the tenant template.
-    const isTemplate = !text.trim()
+    const isTemplate = forceTemplate || !text.trim()
 
     if (!textOverride) setAgentInputMessage('')
     setIsManualSending(true)
@@ -41,7 +39,7 @@ export const useManualMessaging = ({
           method: 'POST',
           body: JSON.stringify({
             type: isTemplate ? 'template' : 'text',
-            message: text.trim() || undefined
+            message: isTemplate ? undefined : text.trim() || undefined
           })
         })
         setManualStatus(isTemplate ? '✅ Template Sent' : '✅ Sent via WhatsApp API')

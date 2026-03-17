@@ -93,8 +93,10 @@ export const loadTenantTemplateConfig = async (
       return null
     }
 
-    const resolvedKey = templateKey ?? configModule.defaultTemplateKey
+    const resolvedKey =
+      templateKey && templateKey.trim().length > 0 ? templateKey : configModule.defaultTemplateKey
     const template = configModule.templates[resolvedKey]
+
     if (!template) {
       console.warn(`[tenant-channel] Template '${resolvedKey}' not found in ${filePath}`)
       return null

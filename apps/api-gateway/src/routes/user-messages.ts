@@ -65,7 +65,7 @@ export const registerUserMessageRoutes = (app: FastifyInstance): void => {
     const tid = await getTenantId()
     const sessionId = await ensureSession(dbPool, userId, tid)
 
-    // Load template config. If body.templateName is missing, it loads the default.
+    const isTemplateSend = body.type === 'template' || (!body.type && !body.message)
     const tConfig = await loadTenantTemplateConfig(body.templateName)
 
     if (!tConfig) {
@@ -82,12 +82,9 @@ export const registerUserMessageRoutes = (app: FastifyInstance): void => {
       // already has 91
     }
 
-    // Resolve template params if needed
+    // Parameters for Gupshup
     let resolvedParams: string[] | undefined = undefined
-    let templateId = body.templateName
-
-    // We explicitly check the type now
-    const isTemplateSend = body.type === 'template'
+    let templateId: string | undefined = undefined
 
     if (isTemplateSend) {
       templateId = tConfig.template.templateId
@@ -109,9 +106,10 @@ export const registerUserMessageRoutes = (app: FastifyInstance): void => {
       userId,
       appName: tConfig.appName,
       source: tConfig.source,
-      templateId,
+      resolvedTemplateId: templateId,
       isTemplateSend,
-      toPhone
+      toPhone,
+      body
     })
 
     const res = await fetch('http://localhost:3040/whatsapp/send', {
