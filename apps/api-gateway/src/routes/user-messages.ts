@@ -47,13 +47,14 @@ export const registerUserMessageRoutes = (app: FastifyInstance): void => {
   app.post('/users/:id/send-whatsapp', { preHandler: protectedHandler }, async (request, reply) => {
     const userId = (request.params as { id: string }).id
     const body = request.body as {
+      type: 'text' | 'template'
       message?: string
       templateName?: string
       variables?: Record<string, unknown>
     }
 
-    if (!body?.message && !body?.templateName) {
-      return reply.status(400).send({ error: 'message or templateName is required' })
+    if (body.type === 'text' && !body.message) {
+      return reply.status(400).send({ error: 'message is required for type: text' })
     }
 
     const user = await getUserById(dbPool, userId)
@@ -63,6 +64,8 @@ export const registerUserMessageRoutes = (app: FastifyInstance): void => {
 
     const tid = await getTenantId()
     const sessionId = await ensureSession(dbPool, userId, tid)
+
+    // Load template config. If body.templateName is missing, it loads the default.
     const tConfig = await loadTenantTemplateConfig(body.templateName)
 
     if (!tConfig) {
@@ -83,7 +86,10 @@ export const registerUserMessageRoutes = (app: FastifyInstance): void => {
     let resolvedParams: string[] | undefined = undefined
     let templateId = body.templateName
 
-    if (body.templateName) {
+    // We explicitly check the type now
+    const isTemplateSend = body.type === 'template'
+
+    if (isTemplateSend) {
       templateId = tConfig.template.templateId
       const varMap: Record<string, string> = {
         user_name: user.fullName || 'User',
@@ -104,6 +110,7 @@ export const registerUserMessageRoutes = (app: FastifyInstance): void => {
       appName: tConfig.appName,
       source: tConfig.source,
       templateId,
+      isTemplateSend,
       toPhone
     })
 
@@ -113,7 +120,7 @@ export const registerUserMessageRoutes = (app: FastifyInstance): void => {
       body: JSON.stringify({
         sessionId,
         toPhoneE164: toPhone,
-        body: body.message,
+        body: isTemplateSend ? undefined : body.message,
         templateName: templateId,
         templateParams: resolvedParams,
         appName: tConfig.appName,
@@ -128,14 +135,18 @@ export const registerUserMessageRoutes = (app: FastifyInstance): void => {
 
     const gupshupRes = (await res.json()) as { providerMessageId: string }
 
+    const logBody = isTemplateSend
+      ? `[Sent Template${body.templateName ? `: ${body.templateName}` : ''}]`
+      : (body.message ?? '')
+
     await recordMessageInteraction(dbPool, {
       sessionId,
       direction: 'outbound',
-      body: body.message || `[Template: ${body.templateName}]`,
+      body: logBody,
       channel: 'whatsapp',
       providerMessageId: gupshupRes.providerMessageId
     })
-    await applyMessageMemoryUpdate(dbPool, sessionId, body.message || `[Template: ${body.templateName}]`)
+    await applyMessageMemoryUpdate(dbPool, sessionId, logBody)
 
     eventLogger.log({
       event: 'manual_whatsapp_sent',

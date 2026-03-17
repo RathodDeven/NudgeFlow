@@ -24,13 +24,17 @@ export type TenantWhatsAppConfig = {
 const whatsappTemplateConfig: TenantWhatsAppConfig = {
   appName: 'Clickpe',
   source: '15558996079', // TODO: Update with actual Gupshup WhatsApp number
-  defaultTemplateKey: 'step_completion_document_required',
+  defaultTemplateKey: 'application_update_status_alert',
   ctaBaseUrl:
     'https://los-prod.dailype.in/muthoot/session-link?utm_source=muthoot_follow_up&utm_medium=whatsapp&utm_campaign=ronit_follow_up',
   templates: {
     step_completion_document_required: {
       templateId: '9269aa1f-122d-4dd3-9550-1865884d5b3f',
       variableOrder: ['application_id', 'disbursement_amount', 'pending_document', 'mob_num']
+    },
+    application_update_status_alert: {
+      templateId: '447f4ac5-cc17-4d2a-9ac7-f6ba419f8e1e',
+      variableOrder: ['application_id', 'pending_document', 'loan_amount', 'mob_num']
     }
   }
 }

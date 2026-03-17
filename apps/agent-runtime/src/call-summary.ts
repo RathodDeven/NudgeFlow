@@ -37,22 +37,25 @@ export const summarizeCall = async (input: CallSummaryInput): Promise<CallSummar
     return { summary: input.transcript.slice(0, 280) }
   }
 
-  const systemPrompt =
-    'You are summarizing a loan recovery call. Provide a concise summary (1-3 sentences) and extract a follow-up call datetime if the user agreed on one. Return ISO 8601 in suggestedNextCallAt. If no follow-up time mentioned, omit it.'
-
-  const userPrompt = [
-    `Transcript: ${input.transcript}`,
-    `Summary state: ${JSON.stringify(input.summaryState)}`,
-    `Compact facts: ${JSON.stringify(input.compactFacts)}`
-  ].join('\n')
+  const messages: { role: 'user' | 'assistant'; content: string }[] = [
+    {
+      role: 'user',
+      content: [
+        `Transcript: ${input.transcript}`,
+        `Summary state: ${JSON.stringify(input.summaryState)}`,
+        `Compact facts: ${JSON.stringify(input.compactFacts)}`
+      ].join('\n')
+    }
+  ]
 
   const response = await generateStructuredWithOpenAI({
     apiKey: input.apiKey,
     model: input.model,
     schema: responseSchema,
     schemaName: 'CallSummary',
-    systemPrompt,
-    userPrompt
+    instructions:
+      'You are summarizing a loan recovery call. Provide a concise summary (1-3 sentences) and extract a follow-up call datetime if the user agreed on one. Return ISO 8601 in suggestedNextCallAt. If no follow-up time mentioned, omit it.',
+    input: messages
   })
 
   const data = response.data as z.infer<typeof responseSchema>

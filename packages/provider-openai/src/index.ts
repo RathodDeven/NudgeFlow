@@ -1,21 +1,28 @@
 import OpenAI from 'openai'
+import { zodResponseFormat } from 'openai/helpers/zod'
+import type { z } from 'zod'
+
+export type OpenAIChatMessage = {
+  role: 'developer' | 'system' | 'user' | 'assistant'
+  content: string
+}
 
 export type OpenAIChatRequest = {
   apiKey: string
   model: string
-  systemPrompt: string
-  userPrompt: string
+  instructions: string
+  input: OpenAIChatMessage[] | string
   temperature?: number
 }
 
 export const generateWithOpenAI = async (
   request: OpenAIChatRequest
-): Promise<{ text: string; model: string }> => {
+): Promise<{ text: string | null; model: string }> => {
   const client = new OpenAI({ apiKey: request.apiKey })
   const response = await client.responses.create({
     model: request.model,
-    instructions: request.systemPrompt,
-    input: request.userPrompt,
+    instructions: request.instructions,
+    input: request.input,
     temperature: request.temperature ?? 0.4
   })
 
@@ -24,9 +31,6 @@ export const generateWithOpenAI = async (
     model: response.model
   }
 }
-
-import { zodResponseFormat } from 'openai/helpers/zod'
-import type { z } from 'zod'
 
 export type OpenAIChatStructuredRequest<T> = OpenAIChatRequest & {
   schema: z.ZodTypeAny
@@ -38,14 +42,13 @@ export const generateStructuredWithOpenAI = async <T>(
 ): Promise<{ data: T; model: string }> => {
   const client = new OpenAI({ apiKey: request.apiKey })
 
-  // zodResponseFormat returns { type: 'json_schema', json_schema: { name, strict, schema } }
-  // We extract the inner json_schema object to pass into text.format as required by the Responses API.
   const zFormat = zodResponseFormat(request.schema, request.schemaName)
 
   const response = await client.responses.create({
     model: request.model,
-    instructions: request.systemPrompt,
-    input: request.userPrompt,
+    instructions: request.instructions,
+    input: request.input,
+    temperature: request.temperature ?? 0.4,
     text: {
       format: {
         type: 'json_schema',

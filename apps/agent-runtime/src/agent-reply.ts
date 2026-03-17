@@ -78,33 +78,47 @@ export const generateAgentReply = async (input: AgentReplyInput): Promise<AgentR
 
   usedModel = input.env.OPENAI_MODEL_ROUTINE
 
-  const renderedUserPrompt = [
-    '--- Recent Chat History ---',
-    buildHistoryBlock(input.boundedHistory),
-    '---------------------------',
-    `Current Inbound message: ${input.inboundText || '(none)'}`,
-    `Session Context: ${JSON.stringify(input.session.summaryState)}`,
-    `Customer Facts: ${JSON.stringify(input.session.compactFacts)}`,
-    `Mobile: ${((input.session.compactFacts.mobile_number as string) || '').slice(-10)}`,
-    'Task Constraints: NEVER include raw URLs (http/https) in the message body. All links must be in the CTA button logic.'
-  ].join('\n')
-
   const utilitiesContext = buildUtilitiesContext(
     input.session.compactFacts,
     input.session.summaryState.stageContext
   )
   const systemPrompt = buildSystemPrompt(input.promptContext, utilitiesContext)
 
-  console.log(`[agent-runtime] System Prompt for ${input.tenantId}:\n${systemPrompt}`)
-  console.log(`[agent-runtime] User Prompt:\n${renderedUserPrompt}`)
+  // Move dynamic context into instructions (system prompt)
+  const enhancedInstructions = [
+    systemPrompt,
+    '--- CURRENT SESSION CONTEXT ---',
+    `Session State: ${JSON.stringify(input.session.summaryState)}`,
+    `Customer Facts: ${JSON.stringify(input.session.compactFacts)}`,
+    '-------------------------------'
+  ].join('\n')
+
+  const messages: { role: 'user' | 'assistant'; content: string }[] = []
+
+  // Add history
+  for (const m of input.boundedHistory) {
+    messages.push({
+      role: m.direction === 'inbound' ? 'user' : 'assistant',
+      content: m.body
+    })
+  }
+
+  // Add current user message simply
+  messages.push({
+    role: 'user',
+    content: input.inboundText || '(none)'
+  })
+
+  console.log(`[agent-runtime] System Instructions for ${input.tenantId} (includes facts)`)
+  console.log(`[agent-runtime] Sending ${messages.length} clean chat messages in input to LLM`)
 
   const response = await generateStructuredWithOpenAI({
     apiKey: input.env.OPENAI_API_KEY,
     model: usedModel,
     schema: responseSchema,
     schemaName: 'AgentResponse',
-    systemPrompt,
-    userPrompt: renderedUserPrompt
+    instructions: enhancedInstructions,
+    input: messages
   })
 
   console.log('[agent-runtime] LLM Raw Response:', JSON.stringify(response.data, null, 2))

@@ -141,12 +141,7 @@ export function UserDetailPage({
                         isSandbox={isSandbox}
                         useWhatsapp={manual.useWhatsapp}
                         lastInboundAt={lastInboundAt}
-                        onInsertTemplate={() =>
-                          manual.handleSendManualMessage(
-                            undefined, // No body override
-                            'step_completion_document_required' // Send this template
-                          )
-                        }
+                        onInsertTemplate={() => manual.handleSendManualMessage()}
                         status={manual.manualStatus}
                         isSending={manual.isManualSending}
                         message={manual.agentInputMessage}

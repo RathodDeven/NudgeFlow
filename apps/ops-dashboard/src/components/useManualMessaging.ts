@@ -25,9 +25,11 @@ export const useManualMessaging = ({
   const [isManualSending, setIsManualSending] = useState(false)
   const [manualStatus, setManualStatus] = useState('')
 
-  const handleSendManualMessage = async (textOverride?: string, templateName?: string) => {
+  const handleSendManualMessage = async (textOverride?: string) => {
     const text = textOverride ?? agentInputMessage
-    if (!text.trim() && !templateName) return
+    // If text is empty and no template is explicitly provided (which we removed), 
+    // the backend will now default to the tenant template.
+    const isTemplate = !text.trim()
 
     if (!textOverride) setAgentInputMessage('')
     setIsManualSending(true)
@@ -38,11 +40,11 @@ export const useManualMessaging = ({
         await authFetch(`/users/${user.id}/send-whatsapp`, token, {
           method: 'POST',
           body: JSON.stringify({
-            message: text.trim() || undefined,
-            templateName
+            type: isTemplate ? 'template' : 'text',
+            message: text.trim() || undefined
           })
         })
-        setManualStatus(templateName ? '✅ Template Sent' : '✅ Sent via WhatsApp API')
+        setManualStatus(isTemplate ? '✅ Template Sent' : '✅ Sent via WhatsApp API')
         setMessages(prev => [
           ...prev,
           {
@@ -50,13 +52,13 @@ export const useManualMessaging = ({
             sessionId: 'manual',
             channel: 'whatsapp',
             direction: 'outbound',
-            body: templateName ? `[Sent Template: ${templateName}]` : text,
+            body: isTemplate ? '[Sent Template]' : text,
             createdAt: new Date().toISOString()
           }
         ])
       } else {
-        // Simulator mode doesn't really support templates yet, just send text
-        const simBody = templateName ? `[Template: ${templateName}]` : text
+        // Simulator mode: if text is empty, mock a template send
+        const simBody = isTemplate ? '[Template Sent]' : text
         await sendMessageToApi(simBody, 'outbound')
         setMessages(prev => [
           ...prev,
