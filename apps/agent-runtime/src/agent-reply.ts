@@ -30,6 +30,7 @@ export type AgentReplyResult = {
   whatsappPayload: {
     body: string
     type: 'cta_url' | 'quick_reply' | null
+    includeCta: boolean
     display_text: string | null
     url: string | null
     footer: string | null
@@ -46,12 +47,8 @@ const responseSchema = z.object({
     body: z.string(),
     footer: z.string().nullable(),
     header: z.string().nullable(),
-    button: z
-      .object({
-        buttonLabel: z.string(),
-        url: z.string()
-      })
-      .nullable(),
+    includeCta: z.boolean().nullable().default(false),
+    buttonLabel: z.string().nullable(),
     quickReplies: z.array(z.string()).max(3).nullable()
   })
 })
@@ -85,11 +82,11 @@ export const generateAgentReply = async (input: AgentReplyInput): Promise<AgentR
   const systemPrompt = buildSystemPrompt(input.promptContext, utilitiesContext)
 
   // Move dynamic context into instructions (system prompt)
-  const enhancedInstructions = [
+  const expandedInstructions = [
     systemPrompt,
-    '--- CURRENT SESSION CONTEXT ---',
-    `Session State: ${JSON.stringify(input.session.summaryState)}`,
-    `Customer Facts: ${JSON.stringify(input.session.compactFacts)}`,
+    '',
+    '--- CURRENT SESSION STATE ---',
+    JSON.stringify(input.session.summaryState, null, 2),
     '-------------------------------'
   ].join('\n')
 
@@ -103,21 +100,20 @@ export const generateAgentReply = async (input: AgentReplyInput): Promise<AgentR
     })
   }
 
-  // Add current user message simply
-  messages.push({
-    role: 'user',
-    content: input.inboundText || '(none)'
-  })
+  // CURRENT SESSION CONTEXT is already in the boundedHistory from the gateway.
+  // No need to push input.inboundText separately as it causes duplication.
 
   console.log(`[agent-runtime] System Instructions for ${input.tenantId} (includes facts)`)
   console.log(`[agent-runtime] Sending ${messages.length} clean chat messages in input to LLM`)
+
+  console.log(`[agent-runtime] Input Messages: ${JSON.stringify(messages, null, 2)}`)
 
   const response = await generateStructuredWithOpenAI({
     apiKey: input.env.OPENAI_API_KEY,
     model: usedModel,
     schema: responseSchema,
     schemaName: 'AgentResponse',
-    instructions: enhancedInstructions,
+    instructions: expandedInstructions,
     input: messages
   })
 
@@ -130,8 +126,7 @@ export const generateAgentReply = async (input: AgentReplyInput): Promise<AgentR
   llmText = whatsappPayload.body
   usedModel = response.model
 
-  if (whatsappPayload.button) {
-    // URL is sent in the CTA button, do NOT append it to the plain text body (per technical requirement)
+  if (whatsappPayload.includeCta) {
     payloadPlainText = llmText
   } else if (whatsappPayload.quickReplies?.length) {
     payloadPlainText = `${llmText}\n\n${whatsappPayload.quickReplies.map(qr => `[ ${qr} ]`).join(' ')}`
@@ -150,7 +145,7 @@ export const generateAgentReply = async (input: AgentReplyInput): Promise<AgentR
   }
 
   let finalType: 'cta_url' | 'quick_reply' | undefined = undefined
-  if (whatsappPayload.button) {
+  if (whatsappPayload.includeCta) {
     finalType = 'cta_url'
   } else if (whatsappPayload.quickReplies?.length) {
     finalType = 'quick_reply'
@@ -166,8 +161,9 @@ export const generateAgentReply = async (input: AgentReplyInput): Promise<AgentR
     whatsappPayload: {
       body: llmText,
       type: finalType ?? null,
-      display_text: whatsappPayload.button?.buttonLabel ?? null,
-      url: whatsappPayload.button?.url ?? null,
+      includeCta: whatsappPayload.includeCta ?? false,
+      display_text: whatsappPayload.buttonLabel ?? null,
+      url: null, // Gateway resolves this
       footer: whatsappPayload.footer ?? null,
       header: whatsappPayload.header ?? null,
       quickReplies: whatsappPayload.quickReplies?.map(title => ({ title, postbackText: null })) ?? null

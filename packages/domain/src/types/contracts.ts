@@ -44,6 +44,7 @@ export const callSummarySchema = z.object({
 export const whatsappPayloadSchema = z.object({
   body: z.string(),
   type: z.enum(['cta_url', 'quick_reply']).nullable(),
+  includeCta: z.boolean().nullable().default(false),
   display_text: z.string().nullable(),
   url: z.string().nullable(),
   footer: z.string().nullable(),

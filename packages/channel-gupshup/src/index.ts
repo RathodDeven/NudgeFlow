@@ -130,6 +130,8 @@ export type InboundWebhook = {
       text?: string
       type?: string
       postbackText?: string
+      title?: string
+      reply?: string
     }
     sender: {
       phone: string
@@ -142,7 +144,14 @@ export type InboundWebhook = {
 export const parseInboundWebhook = (
   input: InboundWebhook
 ): { phone: string; text: string; providerMessageId?: string } => {
-  const text = input.payload.text ?? input.payload.payload?.text ?? ''
+  // Extract text from standard text messages or interactive replies
+  const text =
+    input.payload.text ??
+    input.payload.payload?.text ??
+    input.payload.payload?.title ??
+    input.payload.payload?.postbackText ??
+    ''
+
   return {
     phone: input.payload.sender.phone,
     text,

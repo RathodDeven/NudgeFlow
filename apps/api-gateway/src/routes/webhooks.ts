@@ -123,10 +123,8 @@ export const registerWebhookRoutes = (app: FastifyInstance): void => {
           follow_up_at: user.followUpAt ?? null,
           call_summary_latest: user.callSummaryLatest ?? null,
           call_notes_latest: user.callNotesLatest ?? null,
-          inference_extracted_data: user.inferenceExtractedData ?? {},
-          inference_context_details: user.inferenceContextDetails ?? {},
-          ...(memoryState?.compactFacts ?? {}),
-          ...(user.metadata as Record<string, unknown>)
+          ...(user.inferenceExtractedData as Record<string, unknown>),
+          ...(memoryState?.compactFacts ?? {})
         }
 
         const agentPayload = {
@@ -156,7 +154,7 @@ export const registerWebhookRoutes = (app: FastifyInstance): void => {
           trigger: 'inbound_reply'
         }
 
-        app.log.info({ msg: 'Sending payload to agent-runtime', sessionId, payload: agentPayload })
+        // app.log.info({ msg: 'Sending payload to agent-runtime', sessionId, payload: agentPayload })
 
         const agentRes = await fetch('http://localhost:3010/agent/respond', {
           method: 'POST',
@@ -202,14 +200,16 @@ export const registerWebhookRoutes = (app: FastifyInstance): void => {
           toPhone = `91${toPhone}`
         }
 
-        // Handle CTA URL and Deep Links
         const finalWhatsappPayload = agentData.whatsappPayload
-        if (finalWhatsappPayload?.type === 'cta_url' && finalWhatsappPayload.url) {
+        if (finalWhatsappPayload?.type === 'cta_url') {
           const tConfigForCta = await loadTenantTemplateConfig()
-          if (tConfigForCta?.ctaBaseUrl) {
-            // Append mob_num to deep link
+          if (tConfigForCta?.ctaBaseUrl && finalWhatsappPayload.includeCta) {
             const separator = tConfigForCta.ctaBaseUrl.includes('?') ? '&' : '?'
             finalWhatsappPayload.url = `${tConfigForCta.ctaBaseUrl}${separator}mob_num=${raw10}`
+          } else if (finalWhatsappPayload.url) {
+            // Fallback for any legacy URL but append mob_num
+            const separator = finalWhatsappPayload.url.includes('?') ? '&' : '?'
+            finalWhatsappPayload.url = `${finalWhatsappPayload.url}${separator}mob_num=${raw10}`
           }
         }
 
