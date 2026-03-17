@@ -12,7 +12,6 @@ export type OpenAIChatRequest = {
   model: string
   instructions: string
   input: OpenAIChatMessage[] | string
-  temperature?: number
 }
 
 export const generateWithOpenAI = async (
@@ -22,8 +21,7 @@ export const generateWithOpenAI = async (
   const response = await client.responses.create({
     model: request.model,
     instructions: request.instructions,
-    input: request.input,
-    temperature: request.temperature ?? 0.4
+    input: request.input
   })
 
   return {
@@ -48,7 +46,6 @@ export const generateStructuredWithOpenAI = async <T>(
     model: request.model,
     instructions: request.instructions,
     input: request.input,
-    temperature: request.temperature ?? 0.4,
     text: {
       format: {
         type: 'json_schema',

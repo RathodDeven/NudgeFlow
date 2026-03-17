@@ -164,8 +164,35 @@ export const registerWebhookRoutes = (app: FastifyInstance): void => {
           body: JSON.stringify(agentPayload)
         })
 
-        const agentData = await agentRes.json()
+        if (!agentRes.ok) {
+          const errorText = await agentRes.text()
+          app.log.error({
+            msg: 'Agent runtime request failed',
+            status: agentRes.status,
+            error: errorText,
+            sessionId
+          })
+          return
+        }
+
+        const agentData = (await agentRes.json()) as {
+          route: string
+          body: string
+          confidence: number
+          guardrailNotes?: string[]
+          suggestedNextFollowupAt?: string
+          usedModel: string
+          // biome-ignore lint/suspicious/noExplicitAny: response is loosely typed
+          memoryDelta?: any
+          // biome-ignore lint/suspicious/noExplicitAny: complex structure
+          whatsappPayload?: any
+        }
         app.log.info({ msg: 'Received response from agent-runtime', sessionId, response: agentData })
+
+        if (!agentData || !agentData.route) {
+          app.log.error({ msg: 'Agent response missing required route', sessionId, agentData })
+          return
+        }
 
         // Comprehensive Phone Normalization for Gupshup/India
         const rawDigits = user.phoneE164.replace(/[^\d]/g, '')
