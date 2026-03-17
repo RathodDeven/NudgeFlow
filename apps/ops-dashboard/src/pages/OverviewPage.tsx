@@ -12,7 +12,7 @@ export function OverviewPage({ metrics, sessions, events }: OverviewPageProps) {
   const metricCards = useMemo(() => {
     return Object.entries(metrics).map(([label, value]) => {
       let displayValue = value as React.ReactNode
-      let icon = <Activity className="h-4 w-4 text-muted-foreground" />
+      let icon = <Activity key={`${label}-icon`} className="h-4 w-4 text-muted-foreground" />
 
       if ((label === 'windowStart' || label === 'windowEnd') && typeof value === 'string') {
         displayValue = new Date(value).toLocaleString([], {
@@ -21,9 +21,9 @@ export function OverviewPage({ metrics, sessions, events }: OverviewPageProps) {
           hour: '2-digit',
           minute: '2-digit'
         })
-        icon = <Calendar className="h-4 w-4 text-muted-foreground" />
+        icon = <Calendar key={`${label}-icon`} className="h-4 w-4 text-muted-foreground" />
       } else if (label.toLowerCase().includes('count') || label.toLowerCase().includes('total')) {
-        icon = <UsersIcon className="h-4 w-4 text-muted-foreground" />
+        icon = <UsersIcon key={`${label}-icon`} className="h-4 w-4 text-muted-foreground" />
       }
 
       return { id: label, label, value: displayValue, icon }

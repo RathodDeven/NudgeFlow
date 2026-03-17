@@ -138,8 +138,6 @@ export function CsvUpload({ apiBase, token, onUploadComplete }: CsvUploadProps) 
     <div className="space-y-4">
       {!fileName ? (
         <div
-          role="button"
-          tabIndex={0}
           onClick={() => fileInputRef.current?.click()}
           onKeyDown={e => {
             if (e.key === 'Enter' || e.key === ' ') {

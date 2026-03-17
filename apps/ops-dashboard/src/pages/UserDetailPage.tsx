@@ -3,6 +3,7 @@ import type { CsvUser, PendingHITLTask } from '@/types'
 import {
   ArrowLeft,
   Calendar,
+  Headphones,
   History,
   Info,
   MessageSquare,
@@ -318,6 +319,26 @@ export function UserDetailPage({
               {user.callSummaryLatest || 'No call summary available yet for this user.'}
             </p>
           </div>
+
+          {user.lastCallRecordingUrl && (
+            <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
+              <div className="flex items-center gap-2 mb-4 text-primary">
+                <Headphones className="h-4 w-4" />
+                <h3 className="font-semibold text-sm">Last Recording</h3>
+              </div>
+              {/* biome-ignore lint/a11y/useMediaCaption: <explanation> */}
+              <audio
+                controls
+                src={user.lastCallRecordingUrl}
+                className="w-full h-10 rounded-md focus:outline-none"
+              >
+                Your browser does not support the audio element.
+              </audio>
+              <p className="text-[10px] text-muted-foreground mt-2 text-center">
+                Last updated: {user.lastCallAt ? new Date(user.lastCallAt).toLocaleString() : 'Recently'}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

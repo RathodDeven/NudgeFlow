@@ -108,6 +108,7 @@ export const listUsers = async (pool: pg.Pool, tenantId: string): Promise<DbUser
       lc.inference_context_details AS "inferenceContextDetails",
       lc.last_call_at AS "lastCallAt",
       lc.last_call_disposition AS "lastCallDisposition",
+      lc.last_call_recording_url AS "lastCallRecordingUrl",
        lc.metadata, lc.created_at AS "loanCreatedAt", lc.updated_at AS "loanUpdatedAt",
        lc.application_created_at AS "applicationCreatedAt", lc.application_updated_at AS "applicationUpdatedAt"
      FROM user_profiles up
@@ -141,6 +142,7 @@ export const getUserById = async (pool: pg.Pool, userId: string): Promise<DbUser
       lc.inference_context_details AS "inferenceContextDetails",
       lc.last_call_at AS "lastCallAt",
       lc.last_call_disposition AS "lastCallDisposition",
+      lc.last_call_recording_url AS "lastCallRecordingUrl",
        lc.metadata, lc.created_at AS "loanCreatedAt", lc.updated_at AS "loanUpdatedAt",
        lc.application_created_at AS "applicationCreatedAt", lc.application_updated_at AS "applicationUpdatedAt"
      FROM user_profiles up
@@ -177,6 +179,7 @@ export const getUserByPhoneE164 = async (
       lc.inference_context_details AS "inferenceContextDetails",
       lc.last_call_at AS "lastCallAt",
       lc.last_call_disposition AS "lastCallDisposition",
+      lc.last_call_recording_url AS "lastCallRecordingUrl",
        lc.metadata, lc.created_at AS "loanCreatedAt", lc.updated_at AS "loanUpdatedAt",
        lc.application_created_at AS "applicationCreatedAt", lc.application_updated_at AS "applicationUpdatedAt"
      FROM user_profiles up
@@ -218,6 +221,7 @@ export const listUntouchedUsers = async (pool: pg.Pool, tenantId: string, limit 
       lc.inference_context_details AS "inferenceContextDetails",
       lc.last_call_at AS "lastCallAt",
       lc.last_call_disposition AS "lastCallDisposition",
+      lc.last_call_recording_url AS "lastCallRecordingUrl",
        lc.metadata, lc.created_at AS "loanCreatedAt", lc.updated_at AS "loanUpdatedAt",
        lc.application_created_at AS "applicationCreatedAt", lc.application_updated_at AS "applicationUpdatedAt"
      FROM user_profiles up

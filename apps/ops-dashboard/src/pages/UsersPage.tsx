@@ -5,7 +5,6 @@ import {
   Calendar,
   Clock,
   Download,
-  Filter,
   MoreHorizontal,
   Phone,
   Search,
@@ -274,8 +273,6 @@ export function UsersPage({
                         onUserSelect(user)
                       }
                     }}
-                    tabIndex={0}
-                    role="button"
                   >
                     <td className="p-4 px-6 align-middle">
                       <div className="flex flex-col">

@@ -37,6 +37,7 @@ export type DbUser = {
   inferenceContextDetails?: Record<string, unknown>
   lastCallAt?: string | null
   lastCallDisposition?: string | null
+  lastCallRecordingUrl?: string | null
 }
 
 export type InsertUserRow = {

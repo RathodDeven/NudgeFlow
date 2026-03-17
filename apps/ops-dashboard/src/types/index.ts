@@ -97,6 +97,7 @@ export type CsvUser = {
   callNotesLatest?: string | null
   lastCallAt?: string | null
   lastCallDisposition?: string | null
+  lastCallRecordingUrl?: string | null
   inferenceExtractedData?: Record<string, unknown>
   inferenceContextDetails?: Record<string, unknown>
 }
