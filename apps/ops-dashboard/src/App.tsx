@@ -96,6 +96,7 @@ export function App() {
         callNotesLatest?: string | null
         lastCallAt?: string | null
         lastCallDisposition?: string | null
+        lastCallRecordingUrl?: string | null
         inferenceExtractedData?: Record<string, unknown>
         inferenceContextDetails?: Record<string, unknown>
       }>
@@ -120,6 +121,7 @@ export function App() {
             callNotesLatest: u.callNotesLatest,
             lastCallAt: u.lastCallAt,
             lastCallDisposition: u.lastCallDisposition,
+            lastCallRecordingUrl: u.lastCallRecordingUrl,
             inferenceExtractedData: u.inferenceExtractedData,
             inferenceContextDetails: u.inferenceContextDetails
           }))
