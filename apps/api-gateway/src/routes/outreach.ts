@@ -158,7 +158,15 @@ export const registerOutreachRoutes = (app: FastifyInstance): void => {
         }
       | undefined
     const tid = await getTenantId()
-    const untouchedUsers = await listUntouchedUsers(dbPool, tid, body?.limit ?? 200)
+    const untouchedUsersRaw = await listUntouchedUsers(dbPool, tid, body?.limit ?? 200)
+
+    // Deduplicate by userId to avoid double-sending templates/calls for users with multiple loan cases
+    const seenUserIds = new Set<string>()
+    const untouchedUsers = untouchedUsersRaw.filter(u => {
+      if (seenUserIds.has(u.id)) return false
+      seenUserIds.add(u.id)
+      return true
+    })
 
     const runMode = body?.runMode ?? 'run_now'
     const scheduledAt = runMode === 'schedule' ? body?.scheduledAt : undefined

@@ -119,98 +119,127 @@ export const createAndScheduleBolnaBatch = async (
   schedule: BolnaScheduleBatchResponse
   scheduledAt: string
 }> => {
-  const headers = ['contact_number', ...bolnaAgentVariables]
-  const lines = [headers.join(',')]
+  const CHUNK_SIZE = 10
+  const isRunNow = params.runMode === 'run_now'
 
-  for (const user of params.users) {
-    const sessionId = await ensureSession(pool, user.id, params.tenantId)
-    const session = await getSessionContext(pool, sessionId)
-    if (!session) continue
+  // If run_now and more than 10 users, we chunk.
+  // For schedule, we can send as is (Bolna allows larger scheduled batches)
+  const userChunks =
+    isRunNow && params.users.length > CHUNK_SIZE
+      ? Array.from({ length: Math.ceil(params.users.length / CHUNK_SIZE) }, (_, i) =>
+          params.users.slice(i * CHUNK_SIZE, i * CHUNK_SIZE + CHUNK_SIZE)
+        )
+      : [params.users]
 
-    const variableValues: Record<string, string> = {
-      timezone: getStringValue(session.tenantTimezone, 'Asia/Kolkata'),
-      application_created_at: session.applicationCreatedAt
-        ? formatZonedTime(session.applicationCreatedAt, session.tenantTimezone)
-        : 'Unknown',
-      loan_amount: formatVoiceLoanAmount(session.loanAmount),
-      loan_stage: formatVoiceLoanStage(session.currentStage),
-      pending_step: resolveVoicePendingStep(session.currentStage),
-      customer_name: getStringValue(session.fullName, 'Unknown'),
-      firm_name: getStringValue(session.firmName, 'Unknown'),
-      tenure: String(session.tenureMonths ?? ''),
-      annual_interest: String(session.annualInterestRate ?? ''),
-      processing_fee: String(session.processingFee ?? ''),
-      emi_amount: String(session.emiAmount ?? ''),
-      time: getCurrentTimeInZone(session.tenantTimezone)
+  let firstBatchResult: {
+    total: number
+    csvRows: number
+    batch: BolnaCreateBatchResponse
+    schedule: BolnaScheduleBatchResponse
+    scheduledAt: string
+  } | null = null
+
+  for (let i = 0; i < userChunks.length; i++) {
+    const chunk = userChunks[i]
+    const headers = ['contact_number', ...bolnaAgentVariables]
+    const lines = [headers.join(',')]
+
+    for (const user of chunk) {
+      const sessionId = await ensureSession(pool, user.id, params.tenantId)
+      const session = await getSessionContext(pool, sessionId)
+      if (!session) continue
+
+      const variableValues: Record<string, string> = {
+        timezone: getStringValue(session.tenantTimezone, 'Asia/Kolkata'),
+        application_created_at: session.applicationCreatedAt
+          ? formatZonedTime(session.applicationCreatedAt, session.tenantTimezone)
+          : 'Unknown',
+        loan_amount: formatVoiceLoanAmount(session.loanAmount),
+        loan_stage: formatVoiceLoanStage(session.currentStage),
+        pending_step: resolveVoicePendingStep(session.currentStage),
+        customer_name: getStringValue(session.fullName, 'Unknown'),
+        firm_name: getStringValue(session.firmName, 'Unknown'),
+        tenure: String(session.tenureMonths ?? ''),
+        annual_interest: String(session.annualInterestRate ?? ''),
+        processing_fee: String(session.processingFee ?? ''),
+        emi_amount: String(session.emiAmount ?? ''),
+        time: getCurrentTimeInZone(session.tenantTimezone)
+      }
+
+      const row = [
+        toBolnaContactNumber(user.phoneE164),
+        ...bolnaAgentVariables.map(variable => variableValues[variable] ?? '')
+      ]
+
+      lines.push(row.map(toCsvValue).join(','))
     }
 
-    const row = [
-      toBolnaContactNumber(user.phoneE164),
-      ...bolnaAgentVariables.map(variable => variableValues[variable] ?? '')
-    ]
+    const csvRows = Math.max(0, lines.length - 1)
+    if (csvRows === 0) continue
 
-    lines.push(row.map(toCsvValue).join(','))
+    const csvContent = `${lines.join('\n')}\n`
+    const batch = await createBolnaBatch({
+      baseUrl: params.bolna.baseUrl,
+      apiKey: params.bolna.apiKey,
+      request: {
+        agentId: params.bolna.agentId,
+        csvContent,
+        fileName: `untouched-users-batch-${Date.now()}-${i}.csv`,
+        fromPhoneNumbers: resolveFromPhoneNumbers(params.bolna.fromPhoneNumber),
+        retryConfig: bolnaBatchRetryConfig
+      }
+    })
+
+    const scheduledAtDate = resolveScheduledAt({
+      runMode: params.runMode,
+      scheduledAt: params.scheduledAt
+    })
+    const bypassCallGuardrails = params.runMode === 'run_now'
+
+    let scheduledAt = scheduledAtDate.toISOString()
+    let schedule: BolnaScheduleBatchResponse
+
+    try {
+      schedule = await scheduleBolnaBatch({
+        baseUrl: params.bolna.baseUrl,
+        apiKey: params.bolna.apiKey,
+        batchId: batch.batchId,
+        scheduledAt,
+        bypassCallGuardrails,
+        isScheduled: params.runMode === 'schedule'
+      })
+    } catch (error) {
+      if (!isIsoFormatError(error)) {
+        throw error
+      }
+
+      scheduledAt = toOffsetIsoString(scheduledAtDate)
+      schedule = await scheduleBolnaBatch({
+        baseUrl: params.bolna.baseUrl,
+        apiKey: params.bolna.apiKey,
+        batchId: batch.batchId,
+        scheduledAt,
+        bypassCallGuardrails,
+        isScheduled: params.runMode === 'schedule'
+      })
+    }
+
+    if (!firstBatchResult) {
+      firstBatchResult = {
+        total: params.users.length,
+        csvRows,
+        batch,
+        schedule,
+        scheduledAt
+      }
+    }
   }
 
-  const csvRows = Math.max(0, lines.length - 1)
-  if (csvRows === 0) {
+  if (!firstBatchResult) {
     throw new Error('no_valid_users_for_batch')
   }
 
-  const csvContent = `${lines.join('\n')}\n`
-  const batch = await createBolnaBatch({
-    baseUrl: params.bolna.baseUrl,
-    apiKey: params.bolna.apiKey,
-    request: {
-      agentId: params.bolna.agentId,
-      csvContent,
-      fileName: 'untouched-users-batch.csv',
-      fromPhoneNumbers: resolveFromPhoneNumbers(params.bolna.fromPhoneNumber),
-      retryConfig: bolnaBatchRetryConfig
-    }
-  })
-
-  const scheduledAtDate = resolveScheduledAt({
-    runMode: params.runMode,
-    scheduledAt: params.scheduledAt
-  })
-  const bypassCallGuardrails = params.runMode === 'run_now'
-
-  let scheduledAt = scheduledAtDate.toISOString()
-  let schedule: BolnaScheduleBatchResponse
-
-  try {
-    schedule = await scheduleBolnaBatch({
-      baseUrl: params.bolna.baseUrl,
-      apiKey: params.bolna.apiKey,
-      batchId: batch.batchId,
-      scheduledAt,
-      bypassCallGuardrails,
-      isScheduled: params.runMode === 'schedule'
-    })
-  } catch (error) {
-    if (!isIsoFormatError(error)) {
-      throw error
-    }
-
-    scheduledAt = toOffsetIsoString(scheduledAtDate)
-    schedule = await scheduleBolnaBatch({
-      baseUrl: params.bolna.baseUrl,
-      apiKey: params.bolna.apiKey,
-      batchId: batch.batchId,
-      scheduledAt,
-      bypassCallGuardrails,
-      isScheduled: params.runMode === 'schedule'
-    })
-  }
-
-  return {
-    total: params.users.length,
-    csvRows: csvRows,
-    batch,
-    schedule,
-    scheduledAt
-  }
+  return firstBatchResult
 }
 
 export const listBatches = async (params: { baseUrl: string; apiKey: string; agentId: string }) => {
