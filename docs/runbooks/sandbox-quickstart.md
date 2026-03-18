@@ -85,7 +85,7 @@ To test inbound messages from real WhatsApp users locally:
    ```bash
    curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null && echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list && sudo apt update && sudo apt install ngrok
    ```
-2. **Start Tunnel**: `ngrok http 3000`
+2. **Start Tunnel**: `ngrok http --domain=dioeciously-untrinitarian-marilou.ngrok-free.dev 3000`
 3. **Copy URL**: Use the https forwarding URL (e.g., `https://xyz.ngrok.app`).
 4. **Set Webhook**: In Gupshup Dashboard:
    - **Callback URL**: `<Tunnel-URL>/webhooks/whatsapp/gupshup`
